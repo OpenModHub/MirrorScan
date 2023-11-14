@@ -1,4 +1,4 @@
-# MirrorScan
+# MirrorScan [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
 Python application to realize focus spot scanning with neaSNOM microscopes.
 It works only with neaSNOM devices equipped with position sensors on the mirror motors.
 
@@ -46,3 +46,10 @@ While your are connected, you can move the mirror position to a desired position
 The application was tested on a device with the following software version.
 - neaSCAN 2.2.10875
 - neaServer 2.1.11062.0
+
+## License
+
+This work is licensed under a
+[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
+
+## Disclaimer

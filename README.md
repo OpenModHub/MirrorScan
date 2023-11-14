@@ -8,6 +8,7 @@ The application records the demodulated optical signals while changing the posit
 - the scanning starts from negative coordinates for all axis
   - it measures row-by-row in X direction
    when Z distance is defined it measures 2D (X-Y) map at the defined Z positions
+
 ## Functionality
 Use can use the application to:
 - open and display previously saved mirror scan maps
@@ -15,12 +16,14 @@ Use can use the application to:
   - after each scan the software autosaves the resulting map in a text files containing:
     - X, Y, Z coordinates
     - O1A, O2A, O3A, O4A optical signal maps
+
 Before mirror scan:
 1. Make sure that the detector is cooled down and is in the right position
 2. Make sure your laser (or other light source) is turned on and the focus is supposedly in nearby the tip
 3. Approach to contact before starting the scan
 4. You can only start scanning if you are connected to neaServer
   - use the Connect button to do so
+
 :bulb: It is always a good practice to save the position of the mirror in neaSCAN before starting a scan
 
 :bulb: Tipp: you can monitor the relative position of the mirror also in neaSCAN

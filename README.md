@@ -6,11 +6,11 @@ Snapshot of the application window:
 ![app_screenshot](/Images/app_screenshot.png)
 
 ## Working principle
-The application records the demodulated optical signals while changing the position of the parabolic mirror accross the define area.
-- the initial position of the parabolic mirror will be the middle of the scanning area
+The application records the demodulated optical signals while changing the position of the parabolic mirror across the defined area.
+- the initial position of the parabolic mirror will be in the middle of the scanning area
 - the scanning starts from negative coordinates for all axis
-  - it measures row-by-row in X direction 
-  - when Z distance is defined it measures 2D (X-Y) map at the defined Z positions
+  - it measures row-by-row in the X direction 
+  - when Z distance is defined it measures a 2D (X-Y) map at the defined Z positions
 
 Schematics of the scanning directions:
 ![scanning](/Images/scanning_schematics.png)
@@ -20,7 +20,7 @@ Use can use the application to:
 - open and display previously saved mirror scan maps
   - in the current version: :warning: you have to change Size X,Y,Z and step sizes according to the loaded measurement (will fixed soon)
 - measure new mirror scans
-  - after each scan the software autosaves the resulting map in a text files containing:
+  - after each scan, the software autosaves the resulting map in a text file containing:
     - X, Y, Z coordinates
     - O1A, O2A, O3A, O4A optical signal maps
 
@@ -36,9 +36,9 @@ Use can use the application to:
 :bulb: Tipp: you can monitor the relative position of the mirror also in neaSCAN
 
 ### After scan:
-While your are connected, you can move the mirror position to a desired position of the scanned area:
+While you are connected, you can move the mirror position to the desired position of the scanned area:
 1. Click "move to" button
-2. Click in the image
+2. Click on a chosen position in the image
    - a small marker will move and show the new location
 3. If you start a new mirror scan, this new location will be the center point of the new map
   
@@ -51,5 +51,3 @@ The application was tested on a device with the following software version.
 
 This work is licensed under a
 [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
-
-## Disclaimer

@@ -17,7 +17,7 @@ Use can use the application to:
     - X, Y, Z coordinates
     - O1A, O2A, O3A, O4A optical signal maps
 
-Before mirror scan:
+### Before mirror scan:
 1. Make sure that the detector is cooled down and is in the right position
 2. Make sure your laser (or other light source) is turned on and the focus is supposedly in nearby the tip
 3. Approach to contact before starting the scan
@@ -28,7 +28,7 @@ Before mirror scan:
 
 :bulb: Tipp: you can monitor the relative position of the mirror also in neaSCAN
 
-After scan:
+### After scan:
 While your are connected, you can move the mirror position to a desired position of the scanned area:
 1. Click "move to" button
 2. Click in the image

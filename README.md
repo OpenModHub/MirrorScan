@@ -22,7 +22,9 @@ Before mirror scan:
 4. You can only start scanning if you are connected to neaServer
   - use the Connect button to do so
 :bulb: It is always a good practice to save the position of the mirror in neaSCAN before starting a scan
+
 :bulb: Tipp: you can monitor the relative position of the mirror also in neaSCAN
+
 After scan:
 While your are connected, you can move the mirror position to a desired position of the scanned area:
 1. Click "move to" button

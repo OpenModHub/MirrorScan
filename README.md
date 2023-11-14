@@ -2,16 +2,23 @@
 Python application to realize focus spot scanning with neaSNOM microscopes.
 It works only with neaSNOM devices equipped with position sensors on the mirror motors.
 
+Snapshot of the application window:
+![app_screenshot](/Images/app_screenshot.png)
+
 ## Working principle
 The application records the demodulated optical signals while changing the position of the parabolic mirror accross the define area.
 - the initial position of the parabolic mirror will be the middle of the scanning area
 - the scanning starts from negative coordinates for all axis
-  - it measures row-by-row in X direction
-   when Z distance is defined it measures 2D (X-Y) map at the defined Z positions
+  - it measures row-by-row in X direction 
+  - when Z distance is defined it measures 2D (X-Y) map at the defined Z positions
+
+Schematics of the scanning directions:
+![scanning](/Images/scanning_schematics.png)
 
 ## Functionality
 Use can use the application to:
 - open and display previously saved mirror scan maps
+  - in the current version: :warning: you have to change Size X,Y,Z and step sizes according to the loaded measurement (will fixed soon)
 - measure new mirror scans
   - after each scan the software autosaves the resulting map in a text files containing:
     - X, Y, Z coordinates

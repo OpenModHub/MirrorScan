@@ -1,0 +1,19 @@
+# Images #
+##########
+scanning_direction_drawing.png
+
+# Illustrator files #
+#####################
+scanning_direction_drawing.ai
+
+# Peltier init file #
+#####################
+
+# zip and rar files #
+#####################
+*.zip
+*.rar
+
+# misc files #
+##############
+*.f3z

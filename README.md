@@ -13,10 +13,11 @@ The application records the demodulated optical signals while changing the posit
   - when Z distance is defined it measures a 2D (X-Y) map at the defined Z positions
 
 Schematics of the scanning directions:
+
 ![scanning](/Images/scanning_schematics.png)
 
 ## Functionality
-Use can use the application to:
+You can use the application to:
 - open and display previously saved mirror scan maps
   - in the current version: :warning: you have to change Size X,Y,Z and step sizes according to the loaded measurement (will fixed soon)
 - measure new mirror scans

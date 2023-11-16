@@ -43,7 +43,7 @@ While you are connected, you can move the mirror position to the desired positio
    - a small marker will move and show the new location
 3. If you start a new mirror scan, this new location will be the center point of the new map
   
-## SDK version
+## Software versions
 The application was tested on a device with the following software version.
 - neaSCAN 2.2.10875
 - neaServer 2.1.11062.0

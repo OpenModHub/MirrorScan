@@ -6,10 +6,14 @@ import pyqtgraph as pg
 import numpy as np
 import os
 import asyncio
-import nea_tools
 from time import sleep
 import datetime
 from timeit import default_timer as timer
+try:
+    import nea_tools
+except:
+    print("nea_tools module not found, working in reader mode")
+    offline_mode = True
 
 current_folder = os.getcwd()
 ui_file = os.path.join(current_folder,'mirrorApp.ui')
@@ -176,7 +180,9 @@ class MainWindow(uiclass, baseclass):
         self.imItem = pg.ImageItem(image=testdata)                                                  # create an ImageItem
         self.plot_area.addItem(self.imItem)                                                         # add it to the PlotWidget
         self.cbar = self.plot_area.addColorBar(self.imItem, colorMap='CET-L9',rounding=0.01)        # Create a colorBarItem and add to the PlotWidget
-        self.scatterItem = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))
+        self.scatterItem = pg.ScatterPlotItem(size=15,
+                                              pen=pg.mkPen(color=(255, 255, 255, 220), width=1.5),
+                                              brush=pg.mkBrush(255, 255, 255, 120))
         self.scatterItem.addPoints(self.center_marker)
         self.plot_area.addItem(self.scatterItem)
         self.plot_area.setBackground('w')
@@ -188,10 +194,12 @@ class MainWindow(uiclass, baseclass):
         self.choose_file_button.clicked.connect(self.choose_file)
         self.datascroll_spinBox.valueChanged.connect(lambda: self.data_scroll())
         self.channel_comboBox.currentIndexChanged.connect(self.channel_change)
-        self.scan_button.clicked.connect(self.scan_testing)
-        self.connect_snom_button.clicked.connect(self.connect_to_neasnom)
-        self.move_to_button.clicked.connect(self.enable_move_to_point)
-        self.save_button.clicked.connect(self.save_data)
+
+        if not offline_mode:
+            self.scan_button.clicked.connect(self.scan_testing)
+            self.connect_snom_button.clicked.connect(self.connect_to_neasnom)
+            self.move_to_button.clicked.connect(self.enable_move_to_point)
+            self.save_button.clicked.connect(self.save_data)
 
         # Other attributes and flags
         self.connected = False
@@ -199,7 +207,17 @@ class MainWindow(uiclass, baseclass):
         self.mirror_map = None
         self.loaded_map = None
 
+        if offline_mode:
+            self.statusbar.showMessage(u"\u26A0 nea_tools module not found, running in display-only mode.")
+            self.connect_snom_button.setEnabled(False)
+            self.move_to_button.setEnabled(False)
+            self.scan_button.setEnabled(False)
+            self.save_button.setEnabled(False)
+
     def connect_to_neasnom(self):
+        if "nea_tools" not in sys.modules:
+            return
+
         path_to_dll = r"\\nea-server\updates\Application Files\neaSCAN_2_1_10694_0"
         fingerprint = 'af3b0d0f-cdbb-4555-9bdb-6fe200b64b51'
         host = 'nea-server'

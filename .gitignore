@@ -17,3 +17,6 @@ scanning_direction_drawing.ai
 # misc files #
 ##############
 *.f3z
+
+# Pycharm ideas
+.idea/

@@ -1,0 +1,4 @@
+pyside6==6.6.0
+numpy==1.26.2
+pyqtgraph==0.13.3
+datetime==5.3

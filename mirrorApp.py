@@ -11,6 +11,7 @@ import datetime
 from timeit import default_timer as timer
 try:
     import nea_tools
+    offline_mode = False
 except:
     print("nea_tools module not found, working in reader mode")
     offline_mode = True
@@ -123,7 +124,7 @@ class Worker(QObject):
                     steptime = timer()
                     remtime = (steptime-startime)/counter*(self.scan_map.Nx*self.scan_map.Ny*self.scan_map.Nz-counter)/60
                     self.progress.emit(counter)
-                    self.status_update.emit(f'X: {newx}, Y: {newy}, Z: {newz} Remaining time {remtime} min')
+                    self.status_update.emit(f'X: {newx},\tY: {newy},\tZ: {newz}\tRemaining time: {np.round(remtime, 2)} min')
         sleep(0.5)
 
         # Go back to the original position
@@ -289,6 +290,7 @@ class MainWindow(uiclass, baseclass):
             self.set_display_data(self.loaded_map)
             self.update_image()
         except:
+            print('problem with data loading')
             pass
         else:
             self.mirror_map = None
@@ -401,6 +403,9 @@ class MainWindow(uiclass, baseclass):
 
     def scan_testing(self):
         # Create map object and set up scan parameters
+        self.scan_start_timestamp = datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")
+        
+
         self.mirror_map = mirror_scan()
         self.mirror_map.step_sizeX = self.stepX_spinBox.value() #in nm
         self.mirror_map.step_sizeY = self.stepY_spinBox.value()
@@ -447,6 +452,8 @@ class MainWindow(uiclass, baseclass):
         # self.statusbar.showMessage(f'X = {self.worker.scan_map.X[-1]}, Y = {self.worker.scan_map.Y[-1]}, Z = {self.worker.scan_map.Z[-1]}')
         
     def scan_complete(self):
+        self.scan_end_timestamp = datetime.datetime.now().strftime("%H.%M")
+        self.progress_window.close()
         # Push measured map to display
         self.mirror_map = self.worker.scan_map
         self.center_pos_abs = self.mirror_map.center_point
@@ -480,8 +487,12 @@ class MainWindow(uiclass, baseclass):
 
     def save_data(self):
         if self.mirror_map is not None:
-            np.savetxt(f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_2D_Mirror_scan_{self.mirror_map.sizeX/1000}x{self.mirror_map.sizeY/1000}_{self.mirror_map.step_sizeX/1000}um.dat', 
-                       np.array([self.mirror_map.X, self.mirror_map.Y, self.mirror_map.Z, self.mirror_map.O1A, self.mirror_map.O2A, self.mirror_map.O3A, self.mirror_map.O4A]).T)
+            self.map_filename = f'{self.scan_start_timestamp}_{self.scan_end_timestamp}_x-{self.mirror_map.sizeX/1000}_y-{self.mirror_map.sizeY/1000}_z-{self.mirror_map.step_sizeX/1000}'
+            
+            np.savetxt(f'data/{self.map_filename}_um.dat', 
+                       np.array([self.mirror_map.X, self.mirror_map.Y, self.mirror_map.Z, 
+                                 self.mirror_map.O1A, self.mirror_map.O2A, self.mirror_map.O3A, 
+                                 self.mirror_map.O4A]).T)
 
 class mirror_scan:
     def __init__(self):

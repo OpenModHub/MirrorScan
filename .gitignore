@@ -20,3 +20,9 @@ scanning_direction_drawing.ai
 
 # Pycharm ideas
 .idea/
+
+# recorded data
+./data/
+
+# settings
+.vscode/

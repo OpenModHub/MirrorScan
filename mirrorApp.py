@@ -34,7 +34,9 @@ class Worker(QObject):
         self.motors = None
         self.Vector3D = None
 
+    @Slot()
     def do_scan_test(self):
+        self.started.emit()
         # Calculate mirror coordinates for movement
         xs = np.linspace(-self.scan_map.sizeX/2,self.scan_map.sizeX/2,self.scan_map.Nx)
         ys = np.linspace(-self.scan_map.sizeY/2,self.scan_map.sizeY/2,self.scan_map.Ny)
@@ -47,17 +49,17 @@ class Worker(QObject):
 
         # SCANNING LOOP
         counter = 0
-        for z in zs:
-            for y in ys:
-                for x in xs:
+        for idz, z in enumerate(zs):
+            for idy, y in enumerate(ys):
+                for idx, x in enumerate(xs):
                     counter += 1
-                    self.scan_map.O1A.append(np.random.rand())
-                    self.scan_map.O2A.append(np.random.rand())
-                    self.scan_map.O3A.append(np.random.rand())
-                    self.scan_map.O4A.append(np.random.rand())
-                    self.scan_map.X.append(x)
-                    self.scan_map.Y.append(y)
-                    self.scan_map.Z.append(z)
+                    self.scan_map.O1A[idz,idx,idy] = np.random.rand()
+                    self.scan_map.O2A[idz,idx,idy] = np.random.rand()
+                    self.scan_map.O3A[idz,idx,idy] = np.random.rand()
+                    self.scan_map.O4A[idz,idx,idy] = np.random.rand()
+                    self.scan_map.X[idz,idx,idy] = x
+                    self.scan_map.Y[idz,idx,idy] = y
+                    self.scan_map.Z[idz,idx,idy] = z
                     sleep(0.1)
                     self.progress.emit(counter)
         self.completed.emit()
@@ -94,9 +96,9 @@ class Worker(QObject):
         # SCANNING LOOP
         counter = 0
         startime = timer()
-        for z in zs:
-            for y in ys:
-                for x in xs:
+        for idz, z in enumerate(zs):
+            for idy, y in enumerate(ys):
+                for idx, x in enumerate(xs):
                     counter += 1
                     self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
                     posx = p.absolute_position[0]
@@ -108,18 +110,18 @@ class Worker(QObject):
                     p.go_relative(dx,dy,dz)
                     p.await_movement()
                     # Read optical channels
-                    self.scan_map.O1A.append(self.context.Microscope.Py.OpticalAmplitude[1])
-                    self.scan_map.O2A.append(self.context.Microscope.Py.OpticalAmplitude[2])
-                    self.scan_map.O3A.append(self.context.Microscope.Py.OpticalAmplitude[3])
-                    self.scan_map.O4A.append(self.context.Microscope.Py.OpticalAmplitude[4])
+                    self.scan_map.O1A[idz,idx,idy] = self.context.Microscope.Py.OpticalAmplitude[1]
+                    self.scan_map.O2A[idz,idx,idy] = self.context.Microscope.Py.OpticalAmplitude[2]
+                    self.scan_map.O3A[idz,idx,idy] = self.context.Microscope.Py.OpticalAmplitude[3]
+                    self.scan_map.O4A[idz,idx,idy] = self.context.Microscope.Py.OpticalAmplitude[4]
                     # Update real position
                     self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
                     newx = p.absolute_position[0]
                     newy = p.absolute_position[1]
                     newz = p.absolute_position[2]
-                    self.scan_map.X.append(newx)
-                    self.scan_map.Y.append(newy)
-                    self.scan_map.Z.append(newz)
+                    self.scan_map.X[idz,idx,idy] = newx
+                    self.scan_map.Y[idz,idx,idy] = newy
+                    self.scan_map.Z[idz,idx,idy] = newz
                     steptime = timer()
                     remtime = (steptime-startime)/counter*(self.scan_map.Nx*self.scan_map.Ny*self.scan_map.Nz-counter)
                     self.progress.emit(counter)
@@ -163,7 +165,7 @@ class MainWindow(uiclass, baseclass):
         self.worker.progress.connect(self.update_scan_progress)
         self.worker.completed.connect(self.scan_complete)
         self.worker.status_update.connect(self.status_bar_update)
-        self.work_requested.connect(self.worker.do_scan)
+        self.work_requested.connect(self.worker.do_scan_test)
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.start()
         
@@ -196,7 +198,7 @@ class MainWindow(uiclass, baseclass):
         self.channel_comboBox.currentIndexChanged.connect(self.channel_change)
 
         if not offline_mode:
-            self.scan_button.clicked.connect(self.scan_testing)
+            self.scan_button.clicked.connect(self.start_scan)
             self.connect_snom_button.clicked.connect(self.connect_to_neasnom)
             self.move_to_button.clicked.connect(self.enable_move_to_point)
             self.save_button.clicked.connect(self.save_data)
@@ -295,7 +297,7 @@ class MainWindow(uiclass, baseclass):
 
     def set_display_data(self,map):
         self.meas_data = np.array(getattr(map,self.channel_comboBox.currentText()))
-        self.meas_data = self.meas_data.reshape((map.Nz,map.Nx,map.Ny))
+        # self.meas_data = self.meas_data.reshape((map.Nz,map.Nx,map.Ny))
         if map.Nz == 1:
             self.data_to_plot = self.meas_data[0,:,:]
             self.datascroll_spinBox.setValue(0)
@@ -399,7 +401,7 @@ class MainWindow(uiclass, baseclass):
         else:
             pass
 
-    def scan_testing(self):
+    def start_scan(self):
         # Create map object and set up scan parameters
         self.mirror_map = mirror_scan()
         self.mirror_map.step_sizeX = self.stepX_spinBox.value() #in nm
@@ -409,7 +411,9 @@ class MainWindow(uiclass, baseclass):
         self.mirror_map.sizeY = self.sizeY_spinBox.value()
         self.mirror_map.sizeZ = self.sizeZ_spinBox.value()
         self.mirror_map.recalc_size()
+        self.mirror_map.create_array()
         self.Zaxis = np.linspace(-self.mirror_map.sizeZ/2,self.mirror_map.sizeZ/2,self.mirror_map.Nz)
+
         # Send the map object to worker object
         self.worker.scan_map = self.mirror_map
         # Check if connected
@@ -444,6 +448,9 @@ class MainWindow(uiclass, baseclass):
             
     def update_scan_progress(self, v):
         self.progress_window.progress_bar.setValue(v)
+        self.mirror_map = self.worker.scan_map
+        self.set_display_data(self.mirror_map)
+        self.update_image()
         # self.statusbar.showMessage(f'X = {self.worker.scan_map.X[-1]}, Y = {self.worker.scan_map.Y[-1]}, Z = {self.worker.scan_map.Z[-1]}')
         
     def scan_complete(self):
@@ -517,6 +524,16 @@ class mirror_scan:
             self.Nz = 1
         else:
             self.Nz = int(self.sizeZ/self.step_sizeZ)
+
+    def create_array(self):
+        self.O1A = np.zeros(self.Nz,self.Nx,self.Ny)
+        self.O2A = np.zeros(self.Nz,self.Nx,self.Ny)
+        self.O3A = np.zeros(self.Nz,self.Nx,self.Ny)
+        self.O4A = np.zeros(self.Nz,self.Nx,self.Ny)
+
+        self.X = np.zeros(self.Nz,self.Nx,self.Ny)
+        self.Y = np.zeros(self.Nz,self.Nx,self.Ny)
+        self.Z = np.zeros(self.Nz,self.Nx,self.Ny)
 
 class ScanProgressWindow(QWidget):
     def __init__(self):

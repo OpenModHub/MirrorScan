@@ -121,9 +121,9 @@ class Worker(QObject):
                     self.scan_map.Y.append(newy)
                     self.scan_map.Z.append(newz)
                     steptime = timer()
-                    remtime = (steptime-startime)/counter*(self.scan_map.Nx*self.scan_map.Ny*self.scan_map.Nz-counter)/60
+                    remtime = (steptime-startime)/counter*(self.scan_map.Nx*self.scan_map.Ny*self.scan_map.Nz-counter)
                     self.progress.emit(counter)
-                    self.status_update.emit(f'X: {newx}, Y: {newy}, Z: {newz} Remaining time {remtime} min')
+                    self.status_update.emit(f'X: {newx}, Y: {newy}, Z: {newz} Remaining time: {datetime.timedelta(seconds=remtime)}')
         sleep(0.5)
 
         # Go back to the original position

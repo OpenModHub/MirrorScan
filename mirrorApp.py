@@ -419,14 +419,11 @@ class MainWindow(uiclass, baseclass):
         self.worker.scan_map = self.mirror_map
         # Check if connected
         if self.connected:
+            # Pass SDK objects to worker thread
             self.worker.nea = self.nea
             self.worker.context = self.context
             self.worker.motors = self.motors
             self.worker.Vector3D = self.Vector3D
-            # Open progress bar window
-            self.progress_window = ScanProgressWindow()
-            self.progress_window.progress_bar.setMaximum(self.mirror_map.Nx*self.mirror_map.Ny*self.mirror_map.Nz)
-            self.progress_window.show()
             # Emit Signal to start scan at worker thread Slot
             self.work_requested.emit()
             self.connect_snom_button.setEnabled(False)
@@ -448,7 +445,6 @@ class MainWindow(uiclass, baseclass):
                 pass
             
     def update_scan_progress(self, v):
-        self.progress_window.progress_bar.setValue(v)
         self.mirror_map = self.worker.scan_map
         self.set_display_data(self.mirror_map)
         self.update_image()
@@ -548,19 +544,6 @@ class mirror_scan:
         self.X = np.zeros((self.Nz,self.Nx,self.Ny))
         self.Y = np.zeros((self.Nz,self.Nx,self.Ny))
         self.Z = np.zeros((self.Nz,self.Nx,self.Ny))
-
-class ScanProgressWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle('Scan progress')
-        self.label = QLabel("Scan is in progress! Wait until it's done!")
-        self.progress_bar = QProgressBar(self)
-        self.layout = QVBoxLayout()
-        self.layout.addWidget(self.label)
-        self.layout.addWidget(self.progress_bar)
-        self.setLayout(self.layout)
-        self.progress_bar.setValue(0)
-        self.show()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

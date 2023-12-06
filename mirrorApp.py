@@ -460,7 +460,8 @@ class MainWindow(uiclass, baseclass):
         self.update_image()
         self.loaded_map = None
         self.connect_snom_button.setEnabled(True)
-        # self.save_data()
+        if self.AutoSaveCheckbox.isChecked():
+            self.save_data()
 
     def status_bar_update(self, m):
         self.statusbar.showMessage(m)

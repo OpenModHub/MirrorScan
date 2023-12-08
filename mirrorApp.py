@@ -264,26 +264,42 @@ class MainWindow(uiclass, baseclass):
             self.statusbar.showMessage(f'No file was loaded')
     
     def load_data(self):
-        # Load data from file
-        data = np.loadtxt(self.file_name)
-        # Create map object for the loaded data
+        # Create scan object
         self.loaded_map = mirror_scan()
-        self.loaded_map.X = data[:,0]
-        self.loaded_map.Y = data[:,1]
-        self.loaded_map.Z = data[:,2]
-        self.loaded_map.O1A = data[:,3]
-        self.loaded_map.O2A = data[:,4]
-        self.loaded_map.O3A = data[:,5]
+        # Read header lines
+        nlines = 6
+        with open(self.file_name, 'r') as file: header_lines = [file.readline().strip() for _ in range(nlines)]
 
-        self.loaded_map.step_sizeX = self.stepX_spinBox.value() #in nm
-        self.loaded_map.step_sizeY = self.stepY_spinBox.value()
-        self.loaded_map.step_sizeZ = self.stepZ_spinBox.value()
-        self.loaded_map.sizeX = self.sizeX_spinBox.value()
-        self.loaded_map.sizeY = self.sizeY_spinBox.value()
-        self.loaded_map.sizeZ = self.sizeZ_spinBox.value()
+        for header_line in header_lines:
+            idx = header_line.find("=")
+            text = header_line[2:idx-1]
+            number = int(header_line[idx+2:])
+            if text == 'SizeX':
+                self.loaded_map.sizeX = number
+            elif text == 'SizeY':
+                self.loaded_map.sizeY = number
+            elif text == 'SizeZ':
+                self.loaded_map.sizeZ = number
+            elif text == 'StepX':
+                self.loaded_map.step_sizeX = number
+            elif text == 'StepY':
+                self.loaded_map.step_sizeY = number
+            elif text == 'StepZ':
+                self.loaded_map.step_sizeZ = number
+
         self.loaded_map.recalc_size()
-
         self.Zaxis = np.linspace(-self.loaded_map.sizeZ/2,self.loaded_map.sizeZ/2,self.loaded_map.Nz)
+
+        # Load data section of the file and reshape it to the right size
+        data = np.loadtxt(self.file_name)
+        self.loaded_map.X = np.reshape(data[:,0],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.Y = np.reshape(data[:,1],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.Z = np.reshape(data[:,2],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.O1A = np.reshape(data[:,3],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.O2A = np.reshape(data[:,4],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.O3A = np.reshape(data[:,5],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.O4A = np.reshape(data[:,6],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        # Create map object for the loaded data
 
         self.center_pos_rel = [0,0]
         self.center_marker = [{'pos': self.center_pos_rel, 'data': 1}]
@@ -488,6 +504,7 @@ class MainWindow(uiclass, baseclass):
 
             Nfull = self.mirror_map.Nx*self.mirror_map.Ny*self.mirror_map.Nz
 
+            # TODO: qrewrite this with flatten() like in readtest
             xmap = np.reshape(self.mirror_map.X,(1,Nfull))
             ymap = np.reshape(self.mirror_map.X,(1,Nfull))
             zmap = np.reshape(self.mirror_map.X,(1,Nfull))

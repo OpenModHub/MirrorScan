@@ -421,12 +421,12 @@ class MainWindow(uiclass, baseclass):
     def start_scan(self):
         # Create map object and set up scan parameters
         self.mirror_map = mirror_scan()
-        self.mirror_map.step_sizeX = self.stepX_spinBox.value() #in nm
-        self.mirror_map.step_sizeY = self.stepY_spinBox.value()
-        self.mirror_map.step_sizeZ = self.stepZ_spinBox.value()
-        self.mirror_map.sizeX = self.sizeX_spinBox.value()
-        self.mirror_map.sizeY = self.sizeY_spinBox.value()
-        self.mirror_map.sizeZ = self.sizeZ_spinBox.value()
+        self.mirror_map.step_sizeX = self.stepX_spinBox.value()*1000 #in nm
+        self.mirror_map.step_sizeY = self.stepY_spinBox.value()*1000
+        self.mirror_map.step_sizeZ = self.stepZ_spinBox.value()*1000
+        self.mirror_map.sizeX = self.sizeX_spinBox.value()*1000
+        self.mirror_map.sizeY = self.sizeY_spinBox.value()*1000
+        self.mirror_map.sizeZ = self.sizeZ_spinBox.value()*1000
         self.mirror_map.recalc_size()
         self.mirror_map.create_array()
         self.Zaxis = np.linspace(-self.mirror_map.sizeZ/2,self.mirror_map.sizeZ/2,self.mirror_map.Nz)

@@ -501,8 +501,7 @@ class MainWindow(uiclass, baseclass):
 
     def save_data(self):
         if self.mirror_map is not None:
-            fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_2D_Mirror_scan_
-                    {self.mirror_map.sizeX/1000}x{self.mirror_map.sizeY/1000}_{self.mirror_map.step_sizeX/1000}um.dat'
+            fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_2D_Mirror_scan_{self.mirror_map.sizeX/1000}x{self.mirror_map.sizeY/1000}_{self.mirror_map.step_sizeX/1000}um.dat'
             X = self.mirror_map.X.flatten()
             Y = self.mirror_map.Y.flatten()
             Z = self.mirror_map.Z.flatten()

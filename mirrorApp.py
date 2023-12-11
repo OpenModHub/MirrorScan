@@ -163,7 +163,8 @@ class MainWindow(uiclass, baseclass):
         # Linking button label correction
         txt = "\U0001F517"
         self.linkSizeButton.setText(txt)
-        
+        self.linkButton_default_style_sheet = self.linkSizeButton.styleSheet()
+
         # Create the worker thread
         self.worker = Worker()
         self.worker_thread = QThread()
@@ -201,6 +202,7 @@ class MainWindow(uiclass, baseclass):
         self.choose_file_button.clicked.connect(self.choose_file)
         self.datascroll_spinBox.valueChanged.connect(lambda: self.data_scroll())
         self.channel_comboBox.currentIndexChanged.connect(self.channel_change)
+        self.linkSizeButton.clicked.connect(self.link_scan_size)
 
         if not offline_mode:
             self.scan_button.clicked.connect(self.start_scan)
@@ -213,6 +215,7 @@ class MainWindow(uiclass, baseclass):
         self.click_move_enabled = False
         self.mirror_map = None
         self.loaded_map = None
+        self.sizes_linked = False
 
         if offline_mode:
             self.statusbar.showMessage(u"\u26A0 nea_tools module not found, running in display-only mode.")
@@ -517,6 +520,15 @@ class MainWindow(uiclass, baseclass):
             np.savetxt(fname, M.T,
                         header='\n'.join([f'SizeX = {self.mirror_map.sizeX}', f'SizeY = {self.mirror_map.sizeY}',f'SizeZ = {self.mirror_map.sizeZ}',
                         f'StepX = {self.mirror_map.step_sizeX}',f'StepY = {self.mirror_map.step_sizeY}',f'StepZ = {self.mirror_map.step_sizeZ}']))
+
+    def link_scan_size(self):
+        if self.sizes_linked:
+            self.linkSizeButton.setStyleSheet(self.linkButton_default_style_sheet)
+            self.sizes_linked = False
+        else:
+            self.linkSizeButton.setStyleSheet("background-color: grey;")
+            self.sizes_linked = True
+        
 
 class mirror_scan:
     def __init__(self):

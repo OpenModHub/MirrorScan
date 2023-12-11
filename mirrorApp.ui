@@ -333,7 +333,7 @@
            <number>0</number>
           </property>
           <property name="text">
-           <string>🔗</string>
+           <string>Link</string>
           </property>
          </widget>
         </item>

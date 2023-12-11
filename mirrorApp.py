@@ -160,6 +160,10 @@ class MainWindow(uiclass, baseclass):
         self.channel_comboBox.addItems(['O1A', 'O2A', 'O3A','O4A'])
         self.channel_comboBox.setCurrentText('O3A')
 
+        # Linking button label correction
+        txt = "\U0001F517"
+        self.linkSizeButton.setText(txt)
+        
         # Create the worker thread
         self.worker = Worker()
         self.worker_thread = QThread()

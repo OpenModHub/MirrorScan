@@ -510,8 +510,10 @@ class MainWindow(uiclass, baseclass):
             O2A = self.mirror_map.O2A.flatten()
             O3A = self.mirror_map.O3A.flatten()
             O4A = self.mirror_map.O4A.flatten()
-            np.savetxt(fname, 
-                       np.array([X, Y, Z, O1A, O2A, O3A, O4A]).T)
+            M = np.array([X,Y,Z,O1A,O2A,O3A,O4A])
+            np.savetxt(fname, M.T,
+                        header='\n'.join([f'SizeX = {self.mirror_map.sizeX}', f'SizeY = {self.mirror_map.sizeY}',f'SizeZ = {self.mirror_map.sizeZ}',
+                        f'StepX = {self.mirror_map.step_sizeX}',f'StepY = {self.mirror_map.step_sizeY}',f'StepZ = {self.mirror_map.step_sizeZ}']))
 
 class mirror_scan:
     def __init__(self):

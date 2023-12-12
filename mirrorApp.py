@@ -524,10 +524,20 @@ class MainWindow(uiclass, baseclass):
     def link_scan_size(self):
         if self.sizes_linked:
             self.linkSizeButton.setStyleSheet(self.linkButton_default_style_sheet)
+            self.stepY_spinBox.setEnabled(True)
+            self.stepX_spinBox.valueChanged.disconnect(self.update_linked_stepsize)
             self.sizes_linked = False
         else:
-            self.linkSizeButton.setStyleSheet("background-color: grey; border-radius: 4px;border-color: black;border-width: 1px;border-style: outset;padding: 3px;")
+            self.linkSizeButton.setStyleSheet("background-color: rgb(100, 100, 100); border-radius: 4px; border-color: rgb(150, 150, 150); border-width: 2px; border-style: inset; padding: 3px;")
+            self.stepY_spinBox.setEnabled(False)
+            value = self.stepX_spinBox.value()
+            self.stepY_spinBox.setValue(value)
+            self.stepX_spinBox.valueChanged.connect(self.update_linked_stepsize)
             self.sizes_linked = True
+
+    def update_linked_stepsize(self):
+            value = self.stepX_spinBox.value()
+            self.stepY_spinBox.setValue(value)
         
 class mirror_scan:
     def __init__(self):

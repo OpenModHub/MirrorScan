@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>836</width>
+    <width>856</width>
     <height>700</height>
    </rect>
   </property>
@@ -349,6 +349,12 @@
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>40</width>
+            <height>25</height>
+           </size>
           </property>
           <property name="maximumSize">
            <size>

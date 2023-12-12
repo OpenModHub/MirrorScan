@@ -526,10 +526,9 @@ class MainWindow(uiclass, baseclass):
             self.linkSizeButton.setStyleSheet(self.linkButton_default_style_sheet)
             self.sizes_linked = False
         else:
-            self.linkSizeButton.setStyleSheet("background-color: grey;")
+            self.linkSizeButton.setStyleSheet("background-color: grey; border-radius: 4px;border-color: black;border-width: 1px;border-style: outset;padding: 3px;")
             self.sizes_linked = True
         
-
 class mirror_scan:
     def __init__(self):
         # Parameters

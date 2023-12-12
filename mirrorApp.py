@@ -295,7 +295,6 @@ class MainWindow(uiclass, baseclass):
                 self.loaded_map.step_sizeZ = number
 
         self.loaded_map.recalc_size()
-        print(f'{self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny}')
         self.Zaxis = np.linspace(-self.loaded_map.sizeZ/2,self.loaded_map.sizeZ/2,self.loaded_map.Nz)
 
         # Load data section of the file and reshape it to the right size

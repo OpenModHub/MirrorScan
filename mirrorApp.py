@@ -437,7 +437,7 @@ class MainWindow(uiclass, baseclass):
         self.mirror_map.recalc_size()
         self.mirror_map.create_array()
         self.Zaxis = np.linspace(-self.mirror_map.sizeZ/2,self.mirror_map.sizeZ/2,self.mirror_map.Nz)
-
+        print(f'StepX: {self.mirror_map.step_sizeX} StepY: {self.mirror_map.step_sizeY}')
         # Send the map object to worker object
         self.worker.scan_map = self.mirror_map
         # Check if connected
@@ -483,7 +483,7 @@ class MainWindow(uiclass, baseclass):
         self.update_image()
         self.loaded_map = None
         self.connect_snom_button.setEnabled(True)
-        if self.AutoSaveCheckbox.isChecked():
+        if self.AutosaveCheckbox.isChecked():
             self.save_data()
 
     def status_bar_update(self, m):
@@ -497,7 +497,7 @@ class MainWindow(uiclass, baseclass):
                 self.move_to_button.setEnabled(False)
             else:
                 self.status_bar_update('Invalid map type for goto move!')
-                print("Invalid maptype for goto move!")
+                print("Invalid map type for goto move!")
                 msg = QMessageBox(self)
                 msg.setWindowTitle("Invalid map")
                 msg.setText("Invalid map!")
@@ -508,7 +508,7 @@ class MainWindow(uiclass, baseclass):
 
     def save_data(self):
         if self.mirror_map is not None:
-            fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_2D_Mirror_scan_{self.mirror_map.sizeX/1000}x{self.mirror_map.sizeY/1000}_{self.mirror_map.step_sizeX/1000}um.dat'
+            fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_2D_Mirror_scan_{self.mirror_map.sizeX}x{self.mirror_map.sizeY}_{self.mirror_map.step_sizeX}um.dat'
             X = self.mirror_map.X.flatten()
             Y = self.mirror_map.Y.flatten()
             Z = self.mirror_map.Z.flatten()

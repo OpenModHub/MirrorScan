@@ -266,7 +266,7 @@ class MainWindow(uiclass, baseclass):
         self.file_name = fname[0]
         try:
             self.load_data()
-            self.statusbar.showMessage(f'self.channel_comboBox.currentText() is loaded from {fname}')
+            self.statusbar.showMessage(f'{self.channel_comboBox.currentText()} is loaded from {fname}')
         except:
             self.statusbar.showMessage(f'No file was loaded')
     
@@ -276,11 +276,11 @@ class MainWindow(uiclass, baseclass):
         # Read header lines
         nlines = 6
         with open(self.file_name, 'r') as file: header_lines = [file.readline().strip() for _ in range(nlines)]
-
+        
         for header_line in header_lines:
             idx = header_line.find("=")
             text = header_line[2:idx-1]
-            number = int(header_line[idx+2:])
+            number = float(header_line[idx+2:])
             if text == 'SizeX':
                 self.loaded_map.sizeX = number
             elif text == 'SizeY':
@@ -295,6 +295,7 @@ class MainWindow(uiclass, baseclass):
                 self.loaded_map.step_sizeZ = number
 
         self.loaded_map.recalc_size()
+        print(f'{self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny}')
         self.Zaxis = np.linspace(-self.loaded_map.sizeZ/2,self.loaded_map.sizeZ/2,self.loaded_map.Nz)
 
         # Load data section of the file and reshape it to the right size
@@ -483,7 +484,7 @@ class MainWindow(uiclass, baseclass):
         self.update_image()
         self.loaded_map = None
         self.connect_snom_button.setEnabled(True)
-        if self.AutosaveCheckbox.isChecked():
+        if self.AutosaveCheckBox.isChecked():
             self.save_data()
 
     def status_bar_update(self, m):
@@ -525,7 +526,7 @@ class MainWindow(uiclass, baseclass):
         if self.sizes_linked:
             self.linkSizeButton.setStyleSheet(self.linkButton_default_style_sheet)
             self.stepY_spinBox.setEnabled(True)
-            self.stepX_spinBox.valueChanged.disconnect(self.update_linked_stepsize)
+            self.stepX_spinBox.valueChanged.disconnect()
             self.sizes_linked = False
         else:
             self.linkSizeButton.setStyleSheet("background-color: rgb(100, 100, 100); border-radius: 4px; border-color: rgb(150, 150, 150); border-width: 2px; border-style: inset; padding: 3px;")

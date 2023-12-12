@@ -207,7 +207,7 @@
            </font>
           </property>
           <property name="text">
-           <string>Scan size (nm):</string>
+           <string>Scan size (μm):</string>
           </property>
          </widget>
         </item>
@@ -284,7 +284,7 @@
          </font>
         </property>
         <property name="text">
-         <string>Step size (nm):</string>
+         <string>Step size (μm):</string>
         </property>
        </widget>
       </item>
@@ -318,6 +318,9 @@
          <widget class="QDoubleSpinBox" name="stepZ_spinBox">
           <property name="decimals">
            <number>1</number>
+          </property>
+          <property name="minimum">
+           <double>0.500000000000000</double>
           </property>
           <property name="maximum">
            <double>100.000000000000000</double>
@@ -353,7 +356,7 @@
           <property name="minimumSize">
            <size>
             <width>40</width>
-            <height>25</height>
+            <height>30</height>
            </size>
           </property>
           <property name="maximumSize">
@@ -386,6 +389,9 @@
           <property name="decimals">
            <number>1</number>
           </property>
+          <property name="minimum">
+           <double>0.500000000000000</double>
+          </property>
           <property name="maximum">
            <double>50.000000000000000</double>
           </property>
@@ -407,6 +413,9 @@
           </property>
           <property name="decimals">
            <number>1</number>
+          </property>
+          <property name="minimum">
+           <double>0.500000000000000</double>
           </property>
           <property name="maximum">
            <double>50.000000000000000</double>

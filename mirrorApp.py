@@ -253,8 +253,8 @@ class MainWindow(uiclass, baseclass):
                 raise ConnectionError('Connection refused or timeout. Retry to connect again.')
             else:
                 self.connected = True
-                self.statusbar.showMessage("Connected to SNOM")
-                self.connect_snom_button.setText("Disconnect from neaSNOM")
+                self.statusbar.showMessage("Connected to neaSNOM")
+                self.connect_snom_button.setText("Disconnect neaSNOM")
 
             self.context = context
             self.nea = nea
@@ -276,7 +276,7 @@ class MainWindow(uiclass, baseclass):
         # Read header lines
         nlines = 6
         with open(self.file_name, 'r') as file: header_lines = [file.readline().strip() for _ in range(nlines)]
-        
+
         for header_line in header_lines:
             idx = header_line.find("=")
             text = header_line[2:idx-1]

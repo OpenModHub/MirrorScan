@@ -163,6 +163,7 @@ class MainWindow(uiclass, baseclass):
         # Linking button label correction
         txt = "\U0001F517"
         self.linkSizeButton.setText(txt)
+        self.linkStepSizeButton.setText(txt)
         self.linkButton_default_style_sheet = self.linkSizeButton.styleSheet()
 
         # Create the worker thread
@@ -193,7 +194,10 @@ class MainWindow(uiclass, baseclass):
                                               brush=pg.mkBrush(255, 255, 255, 120))
         self.scatterItem.addPoints(self.center_marker)
         self.plot_area.addItem(self.scatterItem)
-        self.plot_area.setBackground('w')
+        # self.plot_area.setBackground('w')
+        self.plot_area.getAxis('left').setTextPen('black')
+        self.plot_area.getAxis('bottom').setTextPen('black')
+        self.plot_area.setBackground((200,200,200, 1))
         self.plot_area.setMouseTracking(True)                                                       # For cursor tracking
         self.imItem.hoverEvent = self.imageHoverEvent                                               # Attach event
         self.imItem.mouseClickEvent = self.imageClickEvent                                          # Attach event
@@ -203,6 +207,7 @@ class MainWindow(uiclass, baseclass):
         self.datascroll_spinBox.valueChanged.connect(lambda: self.data_scroll())
         self.channel_comboBox.currentIndexChanged.connect(self.channel_change)
         self.linkSizeButton.clicked.connect(self.link_scan_size)
+        self.linkStepSizeButton.clicked.connect(self.link_scan_step_size)
 
         if not offline_mode:
             self.scan_button.clicked.connect(self.start_scan)
@@ -216,6 +221,7 @@ class MainWindow(uiclass, baseclass):
         self.mirror_map = None
         self.loaded_map = None
         self.sizes_linked = False
+        self.step_sizes_linked = False
 
         if offline_mode:
             self.statusbar.showMessage(u"\u26A0 nea_tools module not found, running in display-only mode.")
@@ -266,7 +272,7 @@ class MainWindow(uiclass, baseclass):
         self.file_name = fname[0]
         try:
             self.load_data()
-            self.statusbar.showMessage(f'{self.channel_comboBox.currentText()} is loaded from {fname}')
+            self.statusbar.showMessage(f'{fname} is loaded')
         except:
             self.statusbar.showMessage(f'No file was loaded')
     
@@ -326,23 +332,23 @@ class MainWindow(uiclass, baseclass):
             self.data_to_plot = self.meas_data[0,:,:]
             self.datascroll_spinBox.setValue(0)
             self.datascroll_spinBox.setRange(0,0)
-            self.Zplane_label.setText(f"This is only a 2D scan")
+            self.datascroll_spinBox.setEnabled(False)
             self.cbar.setLevels(values = (np.min(self.data_to_plot),np.max(self.data_to_plot)))
         else:
             self.zeroZ_data = self.meas_data[int(map.Nz/2),:,:]
             self.data_to_plot = self.zeroZ_data
             self.datascroll_spinBox.setValue(int(map.Nz/2))
             self.datascroll_spinBox.setRange(0, map.Nz-1)
-            self.Zplane_label.setText(f"Displayed Z plane: {self.Zaxis[int(map.Nz/2)]} nm")
+            self.datascroll_spinBox.setEnabled(True)
             self.cbar.setLevels(values = (np.min(self.zeroZ_data),np.max(self.zeroZ_data)))
 
         #Set up the axis values by transforming the image
         tr = QTransform()                                                               # prepare ImageItem transformation:
-        tr.translate(-map.sizeX/2,-map.sizeY/2)                                         # move 3x3 image to locate center at axis origin
-        tr.scale(map.sizeX/map.Nx, map.sizeY/map.Ny)                                    # scale horizontal and vertical axes
+        tr.translate(-map.sizeX/2/1000,-map.sizeY/2/1000)                                         # move 3x3 image to locate center at axis origin
+        tr.scale(map.sizeX/map.Nx/1000, map.sizeY/map.Ny/1000)                                    # scale horizontal and vertical axes
         self.imItem.setTransform(tr)
-        self.plot_area.getAxis('bottom').setLabel('X position (nm)')
-        self.plot_area.getAxis('left').setLabel('Y position (nm)')
+        self.plot_area.getAxis('bottom').setLabel('X position / μm')
+        self.plot_area.getAxis('left').setLabel('Y position / μm')
         self.plot_area.showAxes(True)
         self.plot_area.setAspectLocked(True)
 
@@ -524,20 +530,38 @@ class MainWindow(uiclass, baseclass):
     def link_scan_size(self):
         if self.sizes_linked:
             self.linkSizeButton.setStyleSheet(self.linkButton_default_style_sheet)
-            self.stepY_spinBox.setEnabled(True)
-            self.stepX_spinBox.valueChanged.disconnect()
+            self.sizeY_spinBox.setEnabled(True)
+            self.sizeX_spinBox.valueChanged.disconnect()
             self.sizes_linked = False
         else:
             self.linkSizeButton.setStyleSheet("background-color: rgb(100, 100, 100); border-radius: 4px; border-color: rgb(150, 150, 150); border-width: 2px; border-style: inset; padding: 3px;")
+            self.sizeY_spinBox.setEnabled(False)
+            value = self.sizeX_spinBox.value()
+            self.sizeY_spinBox.setValue(value)
+            self.sizeX_spinBox.valueChanged.connect(self.update_linked_size)
+            self.sizes_linked = True
+
+    def link_scan_step_size(self):
+        if self.step_sizes_linked:
+            self.linkStepSizeButton.setStyleSheet(self.linkButton_default_style_sheet)
+            self.stepY_spinBox.setEnabled(True)
+            self.stepX_spinBox.valueChanged.disconnect()
+            self.step_sizes_linked = False
+        else:
+            self.linkStepSizeButton.setStyleSheet("background-color: rgb(100, 100, 100); border-radius: 4px; border-color: rgb(150, 150, 150); border-width: 2px; border-style: inset; padding: 3px;")
             self.stepY_spinBox.setEnabled(False)
             value = self.stepX_spinBox.value()
             self.stepY_spinBox.setValue(value)
             self.stepX_spinBox.valueChanged.connect(self.update_linked_stepsize)
-            self.sizes_linked = True
+            self.step_sizes_linked = True
 
     def update_linked_stepsize(self):
             value = self.stepX_spinBox.value()
             self.stepY_spinBox.setValue(value)
+
+    def update_linked_size(self):
+            value = self.sizeX_spinBox.value()
+            self.sizeY_spinBox.setValue(value)
         
 class mirror_scan:
     def __init__(self):

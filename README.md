@@ -3,7 +3,7 @@ Python application to realize focus spot scanning with neaSNOM microscopes.
 It works only with neaSNOM devices equipped with position sensors on the mirror motors.
 
 Snapshot of the application window:
-![app_screenshot](/Images/app_screenshot.png)
+![app_screenshot](/images/app_screenshot.png)
 
 ## Working principle
 The application records the demodulated optical signals while changing the position of the parabolic mirror across the defined area.
@@ -14,7 +14,7 @@ The application records the demodulated optical signals while changing the posit
 
 Schematics of the scanning directions:
 
-![scanning](/Images/scanning_schematics.png)
+![scanning](/images/scanning_schematics.png)
 
 ## Functionality
 You can use the application to:

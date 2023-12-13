@@ -11,6 +11,7 @@ import datetime
 from timeit import default_timer as timer
 try:
     import nea_tools
+    offline_mode = False
 except:
     print("nea_tools module not found, working in reader mode")
     offline_mode = True
@@ -34,7 +35,9 @@ class Worker(QObject):
         self.motors = None
         self.Vector3D = None
 
+    @Slot()
     def do_scan_test(self):
+        self.started.emit()
         # Calculate mirror coordinates for movement
         xs = np.linspace(-self.scan_map.sizeX/2,self.scan_map.sizeX/2,self.scan_map.Nx)
         ys = np.linspace(-self.scan_map.sizeY/2,self.scan_map.sizeY/2,self.scan_map.Ny)
@@ -47,17 +50,17 @@ class Worker(QObject):
 
         # SCANNING LOOP
         counter = 0
-        for z in zs:
-            for y in ys:
-                for x in xs:
+        for idz, z in enumerate(zs):
+            for idy, y in enumerate(ys):
+                for idx, x in enumerate(xs):
                     counter += 1
-                    self.scan_map.O1A.append(np.random.rand())
-                    self.scan_map.O2A.append(np.random.rand())
-                    self.scan_map.O3A.append(np.random.rand())
-                    self.scan_map.O4A.append(np.random.rand())
-                    self.scan_map.X.append(x)
-                    self.scan_map.Y.append(y)
-                    self.scan_map.Z.append(z)
+                    self.scan_map.O1A[idz,idx,idy] = np.random.rand()
+                    self.scan_map.O2A[idz,idx,idy] = np.random.rand()
+                    self.scan_map.O3A[idz,idx,idy] = np.random.rand()
+                    self.scan_map.O4A[idz,idx,idy] = np.random.rand()
+                    self.scan_map.X[idz,idx,idy] = x
+                    self.scan_map.Y[idz,idx,idy] = y
+                    self.scan_map.Z[idz,idx,idy] = z
                     sleep(0.1)
                     self.progress.emit(counter)
         self.completed.emit()
@@ -94,9 +97,9 @@ class Worker(QObject):
         # SCANNING LOOP
         counter = 0
         startime = timer()
-        for z in zs:
-            for y in ys:
-                for x in xs:
+        for idz, z in enumerate(zs):
+            for idy, y in enumerate(ys):
+                for idx, x in enumerate(xs):
                     counter += 1
                     self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
                     posx = p.absolute_position[0]
@@ -108,18 +111,18 @@ class Worker(QObject):
                     p.go_relative(dx,dy,dz)
                     p.await_movement()
                     # Read optical channels
-                    self.scan_map.O1A.append(self.context.Microscope.Py.OpticalAmplitude[1])
-                    self.scan_map.O2A.append(self.context.Microscope.Py.OpticalAmplitude[2])
-                    self.scan_map.O3A.append(self.context.Microscope.Py.OpticalAmplitude[3])
-                    self.scan_map.O4A.append(self.context.Microscope.Py.OpticalAmplitude[4])
+                    self.scan_map.O1A[idz,idy,idx] = self.context.Microscope.Py.OpticalAmplitude[1]
+                    self.scan_map.O2A[idz,idy,idx] = self.context.Microscope.Py.OpticalAmplitude[2]
+                    self.scan_map.O3A[idz,idy,idx] = self.context.Microscope.Py.OpticalAmplitude[3]
+                    self.scan_map.O4A[idz,idy,idx] = self.context.Microscope.Py.OpticalAmplitude[4]
                     # Update real position
                     self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
                     newx = p.absolute_position[0]
                     newy = p.absolute_position[1]
                     newz = p.absolute_position[2]
-                    self.scan_map.X.append(newx)
-                    self.scan_map.Y.append(newy)
-                    self.scan_map.Z.append(newz)
+                    self.scan_map.X[idz,idy,idx] = newx
+                    self.scan_map.Y[idz,idy,idx] = newy
+                    self.scan_map.Z[idz,idy,idx] = newz
                     steptime = timer()
                     remtime = (steptime-startime)/counter*(self.scan_map.Nx*self.scan_map.Ny*self.scan_map.Nz-counter)
                     self.progress.emit(counter)
@@ -157,6 +160,12 @@ class MainWindow(uiclass, baseclass):
         self.channel_comboBox.addItems(['O1A', 'O2A', 'O3A','O4A'])
         self.channel_comboBox.setCurrentText('O3A')
 
+        # Linking button label correction
+        txt = "\U0001F517"
+        self.linkSizeButton.setText(txt)
+        self.linkStepSizeButton.setText(txt)
+        self.linkButton_default_style_sheet = self.linkSizeButton.styleSheet()
+
         # Create the worker thread
         self.worker = Worker()
         self.worker_thread = QThread()
@@ -185,7 +194,10 @@ class MainWindow(uiclass, baseclass):
                                               brush=pg.mkBrush(255, 255, 255, 120))
         self.scatterItem.addPoints(self.center_marker)
         self.plot_area.addItem(self.scatterItem)
-        self.plot_area.setBackground('w')
+        # self.plot_area.setBackground('w')
+        self.plot_area.getAxis('left').setTextPen('black')
+        self.plot_area.getAxis('bottom').setTextPen('black')
+        self.plot_area.setBackground((200,200,200, 1))
         self.plot_area.setMouseTracking(True)                                                       # For cursor tracking
         self.imItem.hoverEvent = self.imageHoverEvent                                               # Attach event
         self.imItem.mouseClickEvent = self.imageClickEvent                                          # Attach event
@@ -194,9 +206,11 @@ class MainWindow(uiclass, baseclass):
         self.choose_file_button.clicked.connect(self.choose_file)
         self.datascroll_spinBox.valueChanged.connect(lambda: self.data_scroll())
         self.channel_comboBox.currentIndexChanged.connect(self.channel_change)
+        self.linkSizeButton.clicked.connect(self.link_scan_size)
+        self.linkStepSizeButton.clicked.connect(self.link_scan_step_size)
 
         if not offline_mode:
-            self.scan_button.clicked.connect(self.scan_testing)
+            self.scan_button.clicked.connect(self.start_scan)
             self.connect_snom_button.clicked.connect(self.connect_to_neasnom)
             self.move_to_button.clicked.connect(self.enable_move_to_point)
             self.save_button.clicked.connect(self.save_data)
@@ -206,6 +220,8 @@ class MainWindow(uiclass, baseclass):
         self.click_move_enabled = False
         self.mirror_map = None
         self.loaded_map = None
+        self.sizes_linked = False
+        self.step_sizes_linked = False
 
         if offline_mode:
             self.statusbar.showMessage(u"\u26A0 nea_tools module not found, running in display-only mode.")
@@ -243,8 +259,8 @@ class MainWindow(uiclass, baseclass):
                 raise ConnectionError('Connection refused or timeout. Retry to connect again.')
             else:
                 self.connected = True
-                self.statusbar.showMessage("Connected to SNOM")
-                self.connect_snom_button.setText("Disconnect from neaSNOM")
+                self.statusbar.showMessage("Connected to neaSNOM")
+                self.connect_snom_button.setText("Disconnect neaSNOM")
 
             self.context = context
             self.nea = nea
@@ -256,31 +272,47 @@ class MainWindow(uiclass, baseclass):
         self.file_name = fname[0]
         try:
             self.load_data()
-            self.statusbar.showMessage(f'self.channel_comboBox.currentText() is loaded from {fname}')
+            self.statusbar.showMessage(f'{fname} is loaded')
         except:
             self.statusbar.showMessage(f'No file was loaded')
     
     def load_data(self):
-        # Load data from file
-        data = np.loadtxt(self.file_name)
-        # Create map object for the loaded data
+        # Create scan object
         self.loaded_map = mirror_scan()
-        self.loaded_map.X = data[:,0]
-        self.loaded_map.Y = data[:,1]
-        self.loaded_map.Z = data[:,2]
-        self.loaded_map.O1A = data[:,3]
-        self.loaded_map.O2A = data[:,4]
-        self.loaded_map.O3A = data[:,5]
+        # Read header lines
+        nlines = 6
+        with open(self.file_name, 'r') as file: header_lines = [file.readline().strip() for _ in range(nlines)]
 
-        self.loaded_map.step_sizeX = self.stepX_spinBox.value() #in nm
-        self.loaded_map.step_sizeY = self.stepY_spinBox.value()
-        self.loaded_map.step_sizeZ = self.stepZ_spinBox.value()
-        self.loaded_map.sizeX = self.sizeX_spinBox.value()
-        self.loaded_map.sizeY = self.sizeY_spinBox.value()
-        self.loaded_map.sizeZ = self.sizeZ_spinBox.value()
+        for header_line in header_lines:
+            idx = header_line.find("=")
+            text = header_line[2:idx-1]
+            number = float(header_line[idx+2:])
+            if text == 'SizeX':
+                self.loaded_map.sizeX = number
+            elif text == 'SizeY':
+                self.loaded_map.sizeY = number
+            elif text == 'SizeZ':
+                self.loaded_map.sizeZ = number
+            elif text == 'StepX':
+                self.loaded_map.step_sizeX = number
+            elif text == 'StepY':
+                self.loaded_map.step_sizeY = number
+            elif text == 'StepZ':
+                self.loaded_map.step_sizeZ = number
+
         self.loaded_map.recalc_size()
-
         self.Zaxis = np.linspace(-self.loaded_map.sizeZ/2,self.loaded_map.sizeZ/2,self.loaded_map.Nz)
+
+        # Load data section of the file and reshape it to the right size
+        data = np.loadtxt(self.file_name)
+        self.loaded_map.X = np.reshape(data[:,0],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.Y = np.reshape(data[:,1],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.Z = np.reshape(data[:,2],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.O1A = np.reshape(data[:,3],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.O2A = np.reshape(data[:,4],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.O3A = np.reshape(data[:,5],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        self.loaded_map.O4A = np.reshape(data[:,6],(self.loaded_map.Nz,self.loaded_map.Nx,self.loaded_map.Ny))
+        # Create map object for the loaded data
 
         self.center_pos_rel = [0,0]
         self.center_marker = [{'pos': self.center_pos_rel, 'data': 1}]
@@ -295,28 +327,28 @@ class MainWindow(uiclass, baseclass):
 
     def set_display_data(self,map):
         self.meas_data = np.array(getattr(map,self.channel_comboBox.currentText()))
-        self.meas_data = self.meas_data.reshape((map.Nz,map.Nx,map.Ny))
+        # self.meas_data = self.meas_data.reshape((map.Nz,map.Nx,map.Ny))
         if map.Nz == 1:
             self.data_to_plot = self.meas_data[0,:,:]
             self.datascroll_spinBox.setValue(0)
             self.datascroll_spinBox.setRange(0,0)
-            self.Zplane_label.setText(f"This is only a 2D scan")
+            self.datascroll_spinBox.setEnabled(False)
             self.cbar.setLevels(values = (np.min(self.data_to_plot),np.max(self.data_to_plot)))
         else:
             self.zeroZ_data = self.meas_data[int(map.Nz/2),:,:]
             self.data_to_plot = self.zeroZ_data
             self.datascroll_spinBox.setValue(int(map.Nz/2))
             self.datascroll_spinBox.setRange(0, map.Nz-1)
-            self.Zplane_label.setText(f"Displayed Z plane: {self.Zaxis[int(map.Nz/2)]} nm")
+            self.datascroll_spinBox.setEnabled(True)
             self.cbar.setLevels(values = (np.min(self.zeroZ_data),np.max(self.zeroZ_data)))
 
         #Set up the axis values by transforming the image
         tr = QTransform()                                                               # prepare ImageItem transformation:
-        tr.translate(-map.sizeX/2,-map.sizeY/2)                                         # move 3x3 image to locate center at axis origin
-        tr.scale(map.sizeX/map.Nx, map.sizeY/map.Ny)                                    # scale horizontal and vertical axes
+        tr.translate(-map.sizeX/2/1000,-map.sizeY/2/1000)                                         # move 3x3 image to locate center at axis origin
+        tr.scale(map.sizeX/map.Nx/1000, map.sizeY/map.Ny/1000)                                    # scale horizontal and vertical axes
         self.imItem.setTransform(tr)
-        self.plot_area.getAxis('bottom').setLabel('X position (nm)')
-        self.plot_area.getAxis('left').setLabel('Y position (nm)')
+        self.plot_area.getAxis('bottom').setLabel('X position / μm')
+        self.plot_area.getAxis('left').setLabel('Y position / μm')
         self.plot_area.showAxes(True)
         self.plot_area.setAspectLocked(True)
 
@@ -399,29 +431,28 @@ class MainWindow(uiclass, baseclass):
         else:
             pass
 
-    def scan_testing(self):
+    def start_scan(self):
         # Create map object and set up scan parameters
         self.mirror_map = mirror_scan()
-        self.mirror_map.step_sizeX = self.stepX_spinBox.value() #in nm
-        self.mirror_map.step_sizeY = self.stepY_spinBox.value()
-        self.mirror_map.step_sizeZ = self.stepZ_spinBox.value()
-        self.mirror_map.sizeX = self.sizeX_spinBox.value()
-        self.mirror_map.sizeY = self.sizeY_spinBox.value()
-        self.mirror_map.sizeZ = self.sizeZ_spinBox.value()
+        self.mirror_map.step_sizeX = self.stepX_spinBox.value()*1000 #in nm
+        self.mirror_map.step_sizeY = self.stepY_spinBox.value()*1000
+        self.mirror_map.step_sizeZ = self.stepZ_spinBox.value()*1000
+        self.mirror_map.sizeX = self.sizeX_spinBox.value()*1000
+        self.mirror_map.sizeY = self.sizeY_spinBox.value()*1000
+        self.mirror_map.sizeZ = self.sizeZ_spinBox.value()*1000
         self.mirror_map.recalc_size()
+        self.mirror_map.create_array()
         self.Zaxis = np.linspace(-self.mirror_map.sizeZ/2,self.mirror_map.sizeZ/2,self.mirror_map.Nz)
+        print(f'StepX: {self.mirror_map.step_sizeX} StepY: {self.mirror_map.step_sizeY}')
         # Send the map object to worker object
         self.worker.scan_map = self.mirror_map
         # Check if connected
         if self.connected:
+            # Pass SDK objects to worker thread
             self.worker.nea = self.nea
             self.worker.context = self.context
             self.worker.motors = self.motors
             self.worker.Vector3D = self.Vector3D
-            # Open progress bar window
-            self.progress_window = ScanProgressWindow()
-            self.progress_window.progress_bar.setMaximum(self.mirror_map.Nx*self.mirror_map.Ny*self.mirror_map.Nz)
-            self.progress_window.show()
             # Emit Signal to start scan at worker thread Slot
             self.work_requested.emit()
             self.connect_snom_button.setEnabled(False)
@@ -443,7 +474,9 @@ class MainWindow(uiclass, baseclass):
                 pass
             
     def update_scan_progress(self, v):
-        self.progress_window.progress_bar.setValue(v)
+        self.mirror_map = self.worker.scan_map
+        self.set_display_data(self.mirror_map)
+        self.update_image()
         # self.statusbar.showMessage(f'X = {self.worker.scan_map.X[-1]}, Y = {self.worker.scan_map.Y[-1]}, Z = {self.worker.scan_map.Z[-1]}')
         
     def scan_complete(self):
@@ -456,7 +489,8 @@ class MainWindow(uiclass, baseclass):
         self.update_image()
         self.loaded_map = None
         self.connect_snom_button.setEnabled(True)
-        self.save_data()
+        if self.AutosaveCheckBox.isChecked():
+            self.save_data()
 
     def status_bar_update(self, m):
         self.statusbar.showMessage(m)
@@ -469,7 +503,7 @@ class MainWindow(uiclass, baseclass):
                 self.move_to_button.setEnabled(False)
             else:
                 self.status_bar_update('Invalid map type for goto move!')
-                print("Invalid maptype for goto move!")
+                print("Invalid map type for goto move!")
                 msg = QMessageBox(self)
                 msg.setWindowTitle("Invalid map")
                 msg.setText("Invalid map!")
@@ -480,9 +514,55 @@ class MainWindow(uiclass, baseclass):
 
     def save_data(self):
         if self.mirror_map is not None:
-            np.savetxt(f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_2D_Mirror_scan_{self.mirror_map.sizeX/1000}x{self.mirror_map.sizeY/1000}_{self.mirror_map.step_sizeX/1000}um.dat', 
-                       np.array([self.mirror_map.X, self.mirror_map.Y, self.mirror_map.Z, self.mirror_map.O1A, self.mirror_map.O2A, self.mirror_map.O3A, self.mirror_map.O4A]).T)
+            fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_2D_Mirror_scan_{self.mirror_map.sizeX}x{self.mirror_map.sizeY}_{self.mirror_map.step_sizeX}um.dat'
+            X = self.mirror_map.X.flatten()
+            Y = self.mirror_map.Y.flatten()
+            Z = self.mirror_map.Z.flatten()
+            O1A = self.mirror_map.O1A.flatten()
+            O2A = self.mirror_map.O2A.flatten()
+            O3A = self.mirror_map.O3A.flatten()
+            O4A = self.mirror_map.O4A.flatten()
+            M = np.array([X,Y,Z,O1A,O2A,O3A,O4A])
+            np.savetxt(fname, M.T,
+                        header='\n'.join([f'SizeX = {self.mirror_map.sizeX}', f'SizeY = {self.mirror_map.sizeY}',f'SizeZ = {self.mirror_map.sizeZ}',
+                        f'StepX = {self.mirror_map.step_sizeX}',f'StepY = {self.mirror_map.step_sizeY}',f'StepZ = {self.mirror_map.step_sizeZ}']))
 
+    def link_scan_size(self):
+        if self.sizes_linked:
+            self.linkSizeButton.setStyleSheet(self.linkButton_default_style_sheet)
+            self.sizeY_spinBox.setEnabled(True)
+            self.sizeX_spinBox.valueChanged.disconnect()
+            self.sizes_linked = False
+        else:
+            self.linkSizeButton.setStyleSheet("background-color: rgb(100, 100, 100); border-radius: 4px; border-color: rgb(150, 150, 150); border-width: 2px; border-style: inset; padding: 3px;")
+            self.sizeY_spinBox.setEnabled(False)
+            value = self.sizeX_spinBox.value()
+            self.sizeY_spinBox.setValue(value)
+            self.sizeX_spinBox.valueChanged.connect(self.update_linked_size)
+            self.sizes_linked = True
+
+    def link_scan_step_size(self):
+        if self.step_sizes_linked:
+            self.linkStepSizeButton.setStyleSheet(self.linkButton_default_style_sheet)
+            self.stepY_spinBox.setEnabled(True)
+            self.stepX_spinBox.valueChanged.disconnect()
+            self.step_sizes_linked = False
+        else:
+            self.linkStepSizeButton.setStyleSheet("background-color: rgb(100, 100, 100); border-radius: 4px; border-color: rgb(150, 150, 150); border-width: 2px; border-style: inset; padding: 3px;")
+            self.stepY_spinBox.setEnabled(False)
+            value = self.stepX_spinBox.value()
+            self.stepY_spinBox.setValue(value)
+            self.stepX_spinBox.valueChanged.connect(self.update_linked_stepsize)
+            self.step_sizes_linked = True
+
+    def update_linked_stepsize(self):
+            value = self.stepX_spinBox.value()
+            self.stepY_spinBox.setValue(value)
+
+    def update_linked_size(self):
+            value = self.sizeX_spinBox.value()
+            self.sizeY_spinBox.setValue(value)
+        
 class mirror_scan:
     def __init__(self):
         # Parameters
@@ -518,18 +598,15 @@ class mirror_scan:
         else:
             self.Nz = int(self.sizeZ/self.step_sizeZ)
 
-class ScanProgressWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle('Scan progress')
-        self.label = QLabel("Scan is in progress! Wait until it's done!")
-        self.progress_bar = QProgressBar(self)
-        self.layout = QVBoxLayout()
-        self.layout.addWidget(self.label)
-        self.layout.addWidget(self.progress_bar)
-        self.setLayout(self.layout)
-        self.progress_bar.setValue(0)
-        self.show()
+    def create_array(self):
+        self.O1A = np.zeros((self.Nz,self.Nx,self.Ny))
+        self.O2A = np.zeros((self.Nz,self.Nx,self.Ny))
+        self.O3A = np.zeros((self.Nz,self.Nx,self.Ny))
+        self.O4A = np.zeros((self.Nz,self.Nx,self.Ny))
+
+        self.X = np.zeros((self.Nz,self.Nx,self.Ny))
+        self.Y = np.zeros((self.Nz,self.Nx,self.Ny))
+        self.Z = np.zeros((self.Nz,self.Nx,self.Ny))
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

@@ -6,13 +6,14 @@ scanning_direction_drawing.png
 #####################
 scanning_direction_drawing.ai
 
-# Peltier init file #
-#####################
-
 # zip and rar files #
 #####################
 *.zip
 *.rar
+
+# test notebooks #
+##################
+*.ipynb
 
 # misc files #
 ##############

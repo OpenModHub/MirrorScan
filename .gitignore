@@ -19,5 +19,9 @@ scanning_direction_drawing.ai
 ##############
 *.f3z
 
+## Directories
 # Pycharm ideas
 .idea/
+
+# vscode
+.vscode/

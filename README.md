@@ -38,7 +38,7 @@ You can use the application to:
 
 ### After scan:
 While you are connected, you can move the mirror position to the desired position of the scanned area:
-1. Click "move to" button
+1. Click the `Move to` button
 2. Click on a chosen position in the image
    - a small marker will move and show the new location
 3. If you start a new mirror scan, this new location will be the center point of the new map

@@ -1,4 +1,5 @@
 import sys
+import yaml
 from PySide6.QtWidgets import QApplication, QFileDialog, QLabel, QVBoxLayout, QWidget, QProgressBar, QMessageBox
 from PySide6.QtCore import QObject, QThread, Signal, Slot
 from PySide6.QtGui import QTransform
@@ -9,11 +10,17 @@ import asyncio
 from time import sleep
 import datetime
 from timeit import default_timer as timer
+
+# load config
+with open('config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
+
 try:
     import nea_tools
     offline_mode = False
 except:
-    print("nea_tools module not found, working in reader mode")
+    # TODO replace with logger
+    print("nea_tools module not found, working offline")
     offline_mode = True
 
 current_folder = os.getcwd()
@@ -234,8 +241,9 @@ class MainWindow(uiclass, baseclass):
         if "nea_tools" not in sys.modules:
             return
 
-        path_to_dll = r"\\nea-server\updates\Application Files\neaSCAN_2_1_10694_0"
-        fingerprint = 'af3b0d0f-cdbb-4555-9bdb-6fe200b64b51'
+        self.path_to_dll = ''# yaml.load('config.yaml')
+        path_to_dll = config['path_to_dll']
+        fingerprint = config['fingerprint']
         host = 'nea-server'
         if self.connected:
             print('\nDisconnecting from neaServer!')

@@ -2,7 +2,7 @@
 Python application to realize focus spot scanning with neaSNOM microscopes.
 It works only with neaSNOM devices equipped with position sensors on the mirror motors.
 
-## Configuration
+## Configurationp
 
 Before starting the application for the first time please enter the appropriate information in the `config.yaml` file.
 

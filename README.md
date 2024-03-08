@@ -2,6 +2,10 @@
 Python application to realize focus spot scanning with neaSNOM microscopes.
 It works only with neaSNOM devices equipped with position sensors on the mirror motors.
 
+## Configuration
+
+Before starting the application for the first time please enter the appropriate information in the `config.yaml` file.
+
 Snapshot of the application window:
 ![app_screenshot](/images/app_screenshot.png)
 
@@ -25,7 +29,7 @@ You can use the application to:
     - X, Y, Z coordinates
     - O1A, O2A, O3A, O4A optical signal maps
 
-### Before mirror scan:
+### Before scan:
 1. Make sure that the detector is cooled down and is in the right position
 2. Make sure your laser (or other light source) is turned on and the focus is supposedly in nearby the tip
 3. Approach to contact before starting the scan

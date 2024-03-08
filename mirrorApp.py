@@ -103,6 +103,7 @@ class Worker(QObject):
 
         # SCANNING LOOP
         counter = 0
+        counterZ = 0
         startime = timer()
         for idz, z in enumerate(zs):
             for idy, y in enumerate(ys):
@@ -132,8 +133,9 @@ class Worker(QObject):
                     self.scan_map.Z[idz,idy,idx] = newz
                     steptime = timer()
                     remtime = (steptime-startime)/counter*(self.scan_map.Nx*self.scan_map.Ny*self.scan_map.Nz-counter)
-                    self.progress.emit(counter)
+                    self.progress.emit(counterZ)
                     self.status_update.emit(f'X: {newx}, Y: {newy}, Z: {newz} Remaining time: {datetime.timedelta(seconds=remtime)}')
+            counterZ += 1
         sleep(0.5)
 
         # Go back to the original position
@@ -161,6 +163,15 @@ class MainWindow(uiclass, baseclass):
         # Load UI
         self.setupUi(self)
 
+        # Other attributes and flags
+        self.connected = False
+        self.click_move_enabled = False
+        self.mirror_map = None
+        self.loaded_map = None
+        self.sizes_linked = False
+        self.step_sizes_linked = False
+        self.currentZindex = 0
+        
         # Stylize
         self.setWindowTitle('Focus scanner application')
         # self.setStyleSheet("background-color: white;")
@@ -211,7 +222,7 @@ class MainWindow(uiclass, baseclass):
 
         # Connect button signals
         self.choose_file_button.clicked.connect(self.choose_file)
-        self.datascroll_spinBox.valueChanged.connect(lambda: self.data_scroll())
+        self.datascroll_spinBox.valueChanged.connect(self.data_scroll)
         self.channel_comboBox.currentIndexChanged.connect(self.channel_change)
         self.linkSizeButton.clicked.connect(self.link_scan_size)
         self.linkStepSizeButton.clicked.connect(self.link_scan_step_size)
@@ -221,14 +232,6 @@ class MainWindow(uiclass, baseclass):
             self.connect_snom_button.clicked.connect(self.connect_to_neasnom)
             self.move_to_button.clicked.connect(self.enable_move_to_point)
             self.save_button.clicked.connect(self.save_data)
-
-        # Other attributes and flags
-        self.connected = False
-        self.click_move_enabled = False
-        self.mirror_map = None
-        self.loaded_map = None
-        self.sizes_linked = False
-        self.step_sizes_linked = False
 
         if offline_mode:
             self.statusbar.showMessage(u"\u26A0 nea_tools module not found, running in display-only mode.")
@@ -343,10 +346,10 @@ class MainWindow(uiclass, baseclass):
             self.datascroll_spinBox.setEnabled(False)
             self.cbar.setLevels(values = (np.min(self.data_to_plot),np.max(self.data_to_plot)))
         else:
-            self.zeroZ_data = self.meas_data[int(map.Nz/2),:,:]
+            self.zeroZ_data = self.meas_data[self.currentZindex,:,:]
             self.data_to_plot = self.zeroZ_data
-            self.datascroll_spinBox.setValue(int(map.Nz/2))
-            self.datascroll_spinBox.setRange(0, map.Nz-1)
+            self.datascroll_spinBox.setValue(self.currentZindex) #Here should come counterZ
+            self.datascroll_spinBox.setRange(0, self.currentZindex)
             self.datascroll_spinBox.setEnabled(True)
             self.cbar.setLevels(values = (np.min(self.zeroZ_data),np.max(self.zeroZ_data)))
 
@@ -370,13 +373,14 @@ class MainWindow(uiclass, baseclass):
         self.move_to_button.setEnabled(True)
 
     def data_scroll(self):
-        if (self.loaded_map == None) | (self.mirror_map == None):
-            pass
+        if (self.loaded_map == None) & (self.mirror_map == None):
+            print(f'Error')
         else:
             index = self.datascroll_spinBox.value()
+            print(f'Z index: {index}, map size: {np.size(self.meas_data[index,:,:])}')
             self.data_to_plot = self.meas_data[index,:,:]
             self.update_image()
-            self.Zplane_label.setText(f"Displayed Z plane: {self.Zaxis[index]} nm")
+            # self.Zplane_label.setText(f"Displayed Z plane: {self.Zaxis[index]} nm")
     
     def channel_change(self):
         if (self.mirror_map == None) & (self.loaded_map == None):
@@ -420,7 +424,7 @@ class MainWindow(uiclass, baseclass):
             dx = x - self.center_pos_rel[0]
             dy = y - self.center_pos_rel[1]
             # Go to position
-            p.go_relative(dx,dy,0)
+            p.go_relative(dx*1000,dy*1000,0)
             p.await_movement()
             self.status_bar_update(f"Relative move to {[x,y]}")
             # Check new position
@@ -428,8 +432,8 @@ class MainWindow(uiclass, baseclass):
             self.center_pos_abs = p.absolute_position
             self.status_bar_update(f"Absolute AFTER center move: {self.center_pos_abs}")
             # Replace center marker
-            realdx = self.center_pos_abs[0] - pos_before[0]
-            realdy = self.center_pos_abs[1] - pos_before[1]
+            realdx = (self.center_pos_abs[0] - pos_before[0])/1000
+            realdy = (self.center_pos_abs[1] - pos_before[1])/1000
             self.center_pos_rel = [self.center_pos_rel[0] + realdx, self.center_pos_rel[1] + realdy]
             self.center_marker = [{'pos': self.center_pos_rel, 'data': 1}]
             self.scatterItem.clear()
@@ -482,6 +486,7 @@ class MainWindow(uiclass, baseclass):
                 pass
             
     def update_scan_progress(self, v):
+        self.currentZindex = v
         self.mirror_map = self.worker.scan_map
         self.set_display_data(self.mirror_map)
         self.update_image()

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>835</width>
-    <height>671</height>
+    <width>836</width>
+    <height>683</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -456,16 +456,16 @@
            <bool>false</bool>
           </property>
           <property name="decimals">
-           <number>2</number>
+           <number>4</number>
           </property>
           <property name="minimum">
-           <double>0.500000000000000</double>
+           <double>0.100000000000000</double>
           </property>
           <property name="maximum">
            <double>50.000000000000000</double>
           </property>
           <property name="singleStep">
-           <double>0.500000000000000</double>
+           <double>0.100000000000000</double>
           </property>
           <property name="value">
            <double>1.000000000000000</double>
@@ -502,16 +502,16 @@
            <bool>false</bool>
           </property>
           <property name="decimals">
-           <number>2</number>
+           <number>4</number>
           </property>
           <property name="minimum">
-           <double>0.500000000000000</double>
+           <double>0.100000000000000</double>
           </property>
           <property name="maximum">
            <double>50.000000000000000</double>
           </property>
           <property name="singleStep">
-           <double>0.500000000000000</double>
+           <double>0.100000000000000</double>
           </property>
           <property name="value">
            <double>1.000000000000000</double>

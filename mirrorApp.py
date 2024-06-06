@@ -31,6 +31,7 @@ uiclass, baseclass = pg.Qt.loadUiType(ui_file)
 ######## QT WORKING THREAD CLASS ############
 class Worker(QObject):
     progress = Signal(int)
+    Zcompleted = Signal()
     completed = Signal()
     started = Signal()
     status_update = Signal(str)
@@ -41,36 +42,6 @@ class Worker(QObject):
         self.context = None
         self.motors = None
         self.Vector3D = None
-
-    @Slot()
-    def do_scan_test(self):
-        self.started.emit()
-        # Calculate mirror coordinates for movement
-        xs = np.linspace(-self.scan_map.sizeX/2,self.scan_map.sizeX/2,self.scan_map.Nx)
-        ys = np.linspace(-self.scan_map.sizeY/2,self.scan_map.sizeY/2,self.scan_map.Ny)
-        if self.scan_map.Nz == 1:
-            zs = np.array([0])
-        else:
-            zs = np.linspace(-self.scan_map.sizeZ/2,self.scan_map.sizeZ/2,self.scan_map.Nz)
-
-        print(f"Nz in the working thread scan: {self.scan_map.Nz}")
-
-        # SCANNING LOOP
-        counter = 0
-        for idz, z in enumerate(zs):
-            for idy, y in enumerate(ys):
-                for idx, x in enumerate(xs):
-                    counter += 1
-                    self.scan_map.O1A[idz,idx,idy] = np.random.rand()
-                    self.scan_map.O2A[idz,idx,idy] = np.random.rand()
-                    self.scan_map.O3A[idz,idx,idy] = np.random.rand()
-                    self.scan_map.O4A[idz,idx,idy] = np.random.rand()
-                    self.scan_map.X[idz,idx,idy] = x
-                    self.scan_map.Y[idz,idx,idy] = y
-                    self.scan_map.Z[idz,idx,idy] = z
-                    sleep(0.1)
-                    self.progress.emit(counter)
-        self.completed.emit()
 
     @Slot()
     def do_scan(self):
@@ -136,6 +107,8 @@ class Worker(QObject):
                     self.progress.emit(counterZ)
                     self.status_update.emit(f'X: {newx}, Y: {newy}, Z: {newz} Remaining time: {datetime.timedelta(seconds=remtime)}')
             counterZ += 1
+            if self.scan_map.Nz > 1:
+                self.Zcompleted.emit()
         sleep(0.5)
 
         # Go back to the original position
@@ -151,6 +124,25 @@ class Worker(QObject):
         self.scan_map.center_point = current_pos
         self.status_update.emit(f'Mirror position AFTER movement: {current_pos}')
         self.completed.emit()
+
+    @Slot()
+    def do_scan_random(self):
+        self.started.emit()
+        # Create motor object
+        p = self.motors.Mirror()
+        if not p.is_active:
+            p.activate()
+        # Set sampling interval
+        self.context.Microscope.Py.SetSamplingTime(50)
+        # Set motor speed
+        safe_v = self.context.Microscope.Py.MirrorMotorVelocityInContacting
+        v = self.Vector3D(safe_v,safe_v,safe_v)
+        self.context.Microscope.Py.SetActiveMotorVelocityXyz(v)
+        # Update current position
+        self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+        current_pos = p.absolute_position
+        self.scan_map.center_point = current_pos
+        self.status_update.emit(f'Mirror position BEFORE movement: {current_pos}')
 
 ######## MAIN APPLICATION WINDOW CLASS ############
 class MainWindow(uiclass, baseclass):
@@ -189,6 +181,7 @@ class MainWindow(uiclass, baseclass):
         self.worker_thread = QThread()
         self.worker.progress.connect(self.update_scan_progress)
         self.worker.completed.connect(self.scan_complete)
+        self.worker.Zcompleted.connect(self.save_data(fname='temp.dat'))
         self.worker.status_update.connect(self.status_bar_update)
         self.work_requested.connect(self.worker.do_scan)
         self.worker.moveToThread(self.worker_thread)
@@ -502,8 +495,14 @@ class MainWindow(uiclass, baseclass):
         self.update_image()
         self.loaded_map = None
         self.connect_snom_button.setEnabled(True)
+        if os.path.exists("temp.txt"):
+            os.remove("temp.txt")
         if self.AutosaveCheckBox.isChecked():
-            self.save_data()
+            if self.scan_map.Nz == 1:
+                fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_2D_Mirror_scan_{self.mirror_map.sizeX}x{self.mirror_map.sizeY}um.dat'
+            else:
+                fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_3D_Mirror_scan_{self.mirror_map.sizeX}x{self.mirror_map.sizeY}x{self.mirror_map.sizeZ}um.dat'
+            self.save_data(fname=fname)
 
     def status_bar_update(self, m):
         self.statusbar.showMessage(m)
@@ -525,9 +524,8 @@ class MainWindow(uiclass, baseclass):
                 msg.setInformativeText("Conduct a mirror scan first to be able to move to a specific position!")
                 msg.exec_()
 
-    def save_data(self):
+    def save_data(self, fname):
         if self.mirror_map is not None:
-            fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_2D_Mirror_scan_{self.mirror_map.sizeX}x{self.mirror_map.sizeY}_{self.mirror_map.step_sizeX}um.dat'
             X = self.mirror_map.X.flatten()
             Y = self.mirror_map.Y.flatten()
             Z = self.mirror_map.Z.flatten()

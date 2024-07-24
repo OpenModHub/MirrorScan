@@ -3,7 +3,9 @@ import yaml
 from PySide6.QtWidgets import QApplication, QFileDialog, QLabel, QVBoxLayout, QWidget, QProgressBar, QMessageBox
 from PySide6.QtCore import QObject, QThread, Signal, Slot
 from PySide6.QtGui import QTransform
+import pyqtgraph.opengl as gl
 import pyqtgraph as pg
+from pyqtgraph import functions as fn
 import numpy as np
 import os
 import asyncio
@@ -31,17 +33,23 @@ uiclass, baseclass = pg.Qt.loadUiType(ui_file)
 ######## QT WORKING THREAD CLASS ############
 class Worker(QObject):
     progress = Signal(int)
+    advanced_progress = Signal(int)
     Zcompleted = Signal()
     completed = Signal()
+    advanced_completed = Signal()
     started = Signal()
     status_update = Signal(str)
+
     def __init__(self):
         super().__init__()
-        self.scan_map = []
+        self.scan_map = mirror_scan()
+        self.advanced_scan_map = advanced_scan()
+        self.advanced_positions = []
         self.nea = None
         self.context = None
         self.motors = None
         self.Vector3D = None
+        self.advanced_aborted = False
 
     @Slot()
     def do_scan(self):
@@ -125,28 +133,134 @@ class Worker(QObject):
         self.status_update.emit(f'Mirror position AFTER movement: {current_pos}')
         self.completed.emit()
 
+    def go_to_center(self,map,p):
+        # REAL FUNCTION
+        # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+        # dx = map.center_point[0]-p.absolute_position[0]
+        # dy = map.center_point[1]-p.absolute_position[1]
+        # dz = map.center_point[2]-p.absolute_position[2]
+        # p.go_relative(dx,dy,dz)
+        # p.await_movement()
+        # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+        # current_pos = p.absolute_position
+        # self.map.center_point = current_pos
+        # self.status_update.emit(f'Mirror position after RECENTERING: {self.map.center_point}')
+
+        # FOR TEST
+        map.center_point = [0.0,0.0,0.0]
+        self.status_update.emit(f'Mirror position after RECENTERING: {map.center_point}')
+        sleep(0.5)
+
     @Slot()
-    def do_scan_random(self):
+    def do_scan_advanced(self):
         self.started.emit()
         # Create motor object
-        p = self.motors.Mirror()
-        if not p.is_active:
-            p.activate()
+        # p = self.motors.Mirror()
+        # if not p.is_active:
+        #     p.activate()
         # Set sampling interval
-        self.context.Microscope.Py.SetSamplingTime(50)
+        # self.context.Microscope.Py.SetSamplingTime(50)
         # Set motor speed
-        safe_v = self.context.Microscope.Py.MirrorMotorVelocityInContacting
-        v = self.Vector3D(safe_v,safe_v,safe_v)
-        self.context.Microscope.Py.SetActiveMotorVelocityXyz(v)
+        # safe_v = self.context.Microscope.Py.MirrorMotorVelocityInContacting
+        # v = self.Vector3D(safe_v,safe_v,safe_v)
+        # self.context.Microscope.Py.SetActiveMotorVelocityXyz(v)
         # Update current position
-        self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
-        current_pos = p.absolute_position
-        self.scan_map.center_point = current_pos
+        # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+        # current_pos = p.absolute_position
+        xpositions = self.advanced_positions[:,0]
+        ypositions = self.advanced_positions[:,1]
+        zpositions = self.advanced_positions[:,2]
+        
+        current_pos = [0.0,0.0,0.0]
+        self.advanced_scan_map.center_point = current_pos
         self.status_update.emit(f'Mirror position BEFORE movement: {current_pos}')
+
+        # Calculate mirror coordinates for movement
+        xs = current_pos[0] + xpositions
+        ys = current_pos[1] + ypositions
+        zs = current_pos[2] + zpositions
+
+        # SCANNING LOOP
+        counter = 0
+        startime = timer()
+        for i in range(self.advanced_scan_map.Npoints):
+            counter += 1
+            # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+            # posx = p.absolute_position[0]
+            # posy = p.absolute_position[1]
+            # posz = p.absolute_position[2]
+            if i == 0:
+                dx = xs[i] - current_pos[0]
+                dy = xs[i] - current_pos[1]
+                dz = ys[i] - current_pos[2]
+            else:
+                dx = xs[i] - xs[i-1]
+                dy = ys[i] - ys[i-1]
+                dz = zs[i] - zs[i-1]
+            
+            # dx = xs[i]-posx
+            # dy = ys[i]-posy
+            # dz = zs[i]-posz
+            # p.go_relative(dx,dy,dz)
+            # p.await_movement()
+            # print(f"Move relative: {dx},{dy},{dz}")
+
+            # Read optical channels
+            # self.advanced_scan_map.O1A[i] = self.context.Microscope.Py.OpticalAmplitude[1]
+            # self.advanced_scan_map.O2A[i] = self.context.Microscope.Py.OpticalAmplitude[2]
+            # self.advanced_scan_map.O3A[i] = self.context.Microscope.Py.OpticalAmplitude[3]
+            # self.advanced_scan_map.O4A[i] = self.context.Microscope.Py.OpticalAmplitude[4]
+            vv = np.array([xs[i],ys[i],zs[i]])
+            self.advanced_scan_map.O1A.append(np.linalg.norm(vv))
+            self.advanced_scan_map.O2A.append(np.linalg.norm(vv))
+            self.advanced_scan_map.O3A.append(np.linalg.norm(vv))
+            self.advanced_scan_map.O4A.append(np.linalg.norm(vv))
+
+            # Update real position
+            # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+            # newx = p.absolute_position[0]
+            # newy = p.absolute_position[1]
+            # newz = p.absolute_position[2]
+            newx = xs[i]
+            newy = ys[i]
+            newz = zs[i]
+            self.advanced_scan_map.X.append(newx)
+            self.advanced_scan_map.Y.append(newy)
+            self.advanced_scan_map.Z.append(newz)
+
+            sleep(0.1)
+            self.advanced_progress.emit(counter)
+            steptime = timer()
+            remtime = (steptime-startime)/counter*(self.advanced_scan_map.Npoints-counter)
+            self.status_update.emit(f'X: {newx}, Y: {newy}, Z: {newz} Remaining time: {datetime.timedelta(seconds=remtime)}')
+            if self.advanced_aborted:
+                break
+
+        sleep(0.5)
+        # Go back to the original position
+        # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+        # dx = current_pos[0]-p.absolute_position[0]
+        # dy = current_pos[1]-p.absolute_position[1]
+        # dz = current_pos[2]-p.absolute_position[2]
+        # p.go_relative(dx,dy,dz)
+        # p.await_movement()
+        # Check position after going back:
+        # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+        # current_pos = p.absolute_position
+        # self.advanced_scan_map.center_point = current_pos
+        if self.advanced_aborted:
+            self.go_to_center(self.advanced_scan_map,p=None)
+            self.status_update.emit(f'Scan was ABORTED!!! Tip position: {self.advanced_scan_map.center_point}')
+            self.advanced_aborted = False
+        else:
+            self.status_update.emit(f'Mirror position AFTER movement: {current_pos}')
+            self.advanced_completed.emit()
 
 ######## MAIN APPLICATION WINDOW CLASS ############
 class MainWindow(uiclass, baseclass):
     work_requested = Signal()
+    advanced_work_requested = Signal()
+
     pg.setConfigOptions(imageAxisOrder='row-major')
 
     def __init__(self):
@@ -158,8 +272,14 @@ class MainWindow(uiclass, baseclass):
         # Other attributes and flags
         self.connected = False
         self.click_move_enabled = False
+        # To store the measured maps
         self.mirror_map = None
+        self.advanced_map = None
+        self.advanced_positions = []
+        # To store the loaded maps
         self.loaded_map = None
+        self.loaded_advanced_data = None
+        # Flags
         self.sizes_linked = False
         self.step_sizes_linked = False
         self.currentZindex = 0
@@ -182,8 +302,11 @@ class MainWindow(uiclass, baseclass):
         self.worker.progress.connect(self.update_scan_progress)
         self.worker.completed.connect(self.scan_complete)
         self.worker.Zcompleted.connect(self.save_data(fname='temp.dat'))
+        self.worker.advanced_progress.connect(self.update_advanced_scan_progress)
+        self.worker.advanced_completed.connect(self.advanced_scan_complete)
         self.worker.status_update.connect(self.status_bar_update)
         self.work_requested.connect(self.worker.do_scan)
+        self.advanced_work_requested.connect(self.worker.do_scan_advanced)
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.start()
         
@@ -213,12 +336,40 @@ class MainWindow(uiclass, baseclass):
         self.imItem.hoverEvent = self.imageHoverEvent                                               # Attach event
         self.imItem.mouseClickEvent = self.imageClickEvent                                          # Attach event
 
+        # Create the plot widget for the advanced mode with pyqtgraph OpenGL scatterplot
+        self.gridItem = gl.GLGridItem()
+        self.plot_area_advanced.addItem(self.gridItem)
+        # Create some test data
+        pos = np.random.uniform(low=-25, high=25, size=(100000,3))
+        pos[0] = (0,0,0)
+
+        d = []
+        for i in range(np.shape(pos)[0]):
+            d.append(1-np.linalg.norm(pos[i,:]))
+        d = np.array(d)
+
+        colors = np.ones((pos.shape[0], 4))
+        minval = np.min(d)
+        maxval = np.max(d)
+        colors[:,0:3] = self.calculateColors(data = d, vmin = minval, vmax = maxval)
+        alphas = (d-minval)/(maxval-minval)
+        colors[:,3] = alphas
+
+        self.plot3DItem = gl.GLScatterPlotItem(pos=pos, color=(1,1,1,1), size=0.1, pxMode=False)
+        self.plot3DItem.setData(pos=pos, color=colors)
+        self.plot_area_advanced.addItem(self.plot3DItem)
+        # self.plot3DItem.setGLOptions('opaque')
+
         # Connect button signals
         self.choose_file_button.clicked.connect(self.choose_file)
         self.datascroll_spinBox.valueChanged.connect(self.data_scroll)
         self.channel_comboBox.currentIndexChanged.connect(self.channel_change)
         self.linkSizeButton.clicked.connect(self.link_scan_size)
         self.linkStepSizeButton.clicked.connect(self.link_scan_step_size)
+        self.load_coords_button.clicked.connect(self.load_advanced_points)
+        self.load_meas_adv_button.clicked.connect(self.load_advanced_data)
+        self.abort_adv_button.clicked.connect(self.abort_advanced)
+        self.show_coords_button.clicked.connect(self.show_advanced_points)
 
         if not offline_mode:
             self.scan_button.clicked.connect(self.start_scan)
@@ -226,12 +377,17 @@ class MainWindow(uiclass, baseclass):
             self.move_to_button.clicked.connect(self.enable_move_to_point)
             self.save_button.clicked.connect(self.save_data)
 
+        self.star_scan_adv_button.clicked.connect(self.start_advanced_scan)
+
         if offline_mode:
+            # simaple buttons
             self.statusbar.showMessage(u"\u26A0 nea_tools module not found, running in display-only mode.")
             self.connect_snom_button.setEnabled(False)
             self.move_to_button.setEnabled(False)
             self.scan_button.setEnabled(False)
             self.save_button.setEnabled(False)
+            # advanced buttons
+            # self.star_scan_adv_button.setEnable(False)
 
     def connect_to_neasnom(self):
         if "nea_tools" not in sys.modules:
@@ -328,6 +484,92 @@ class MainWindow(uiclass, baseclass):
             pass
         else:
             self.mirror_map = None
+
+    def load_advanced_data(self):
+        fname = QFileDialog.getOpenFileName(self, "Choose file","","Datatext files (*.txt *.dat)")
+        file_name = fname[0]
+        # Create scan object
+        self.loaded_advanced_map = advanced_scan()
+        # Load data
+        data = np.loadtxt(file_name)
+        self.loaded_advanced_map.X = data[:,0]
+        self.loaded_advanced_map.Y = data[:,1]
+        self.loaded_advanced_map.Z = data[:,2]
+        self.loaded_advanced_map.O1A = data[:,3]
+        self.loaded_advanced_map.O2A = data[:,4]
+        self.loaded_advanced_map.O3A = data[:,5]
+        self.loaded_advanced_map.O4A = data[:,6]
+
+        self.set_advanced_display(self.loaded_advanced_map)
+        self.update_advanced_plot()
+
+    def load_advanced_points(self):
+        fname = QFileDialog.getOpenFileName(self, "Choose file","","Datatext files (*.txt *.dat)")
+        file_name = fname[0]
+        try:
+            self.advanced_positions = np.loadtxt(file_name)
+            self.advanced_positions *= 1000
+            print(f"Number of positions: {len(self.advanced_positions)}")
+        except IOError as e:
+            self.status_bar_update("No file was loaded")
+
+    def set_advanced_display(self,map):
+        self.advanced_map_to_plot = map
+
+    def update_advanced_plot(self):
+        pos = np.zeros((len(self.advanced_map_to_plot.X), 3))
+        # color = np.ones((len(self.advanced_map_to_plot.X), 4))
+        pos[:,0] = np.asarray(self.advanced_map_to_plot.X)/1000
+        pos[:,1] = np.asarray(self.advanced_map_to_plot.Y)/1000
+        pos[:,2] = np.asarray(self.advanced_map_to_plot.Z)/1000
+        colors = np.ones((pos.shape[0], 4))
+
+        to_plot = 1-np.array(self.advanced_map_to_plot.O2A)
+
+        minval = np.min(to_plot)
+        maxval = np.max(to_plot)
+
+        colors[:,0:3] = self.calculateColors(data = to_plot, vmin = minval, vmax = maxval)
+        alphas = (to_plot-minval)/(maxval-minval)
+        colors[:,3] = alphas
+
+        self.plot3DItem.setData(pos=pos, color=colors, size=1)
+
+    def calculateColors(self, data, vmin, vmax, colormapname = "viridis", n=256):
+        # Make lookuptable
+        cm = pg.colormap.get(colormapname)
+        lut = cm.getLookupTable(nPts=n, alpha=False)
+        # Scale values between 0-255
+        normalized_values = (data-vmin)/(vmax-vmin)
+        scaled_values = (normalized_values*255).astype(int)
+        scaled_values = np.clip(scaled_values, 0, 255)
+        
+        rgba_colors = lut[scaled_values]
+        rgba_colors = rgba_colors.astype(float)/255.0
+
+        return rgba_colors
+    
+    def scaleTo255(self, data, vmin, vmax):
+        normalized_values = (data-vmin)/(vmax-vmin)
+        scaled_values = (normalized_values*255).astype(int)
+        scaled_values = np.clip(scaled_values, 0, 255)
+
+        return scaled_values
+
+    def show_advanced_points(self):
+        point_map = advanced_scan()
+        # Load data
+        point_map.X = self.advanced_positions[:,0]
+        point_map.Y = self.advanced_positions[:,1]
+        point_map.Z = self.advanced_positions[:,2]
+        for i in range(np.shape(point_map.X)[0]):
+            vv = np.array([point_map.X[i],point_map.Y[i],point_map.Z[i]])
+            point_map.O1A.append(np.linalg.norm(vv))
+            point_map.O2A.append(np.linalg.norm(vv))
+            point_map.O3A.append(np.linalg.norm(vv))
+            point_map.O4A.append(np.linalg.norm(vv))
+        self.set_advanced_display(point_map)
+        self.update_advanced_plot()
 
     def set_display_data(self,map):
         self.meas_data = np.array(getattr(map,self.channel_comboBox.currentText()))
@@ -477,6 +719,43 @@ class MainWindow(uiclass, baseclass):
                 self.connect_to_neasnom()
             else:
                 pass
+    
+    def start_advanced_scan(self):
+        # Create map object and set up scan parameters
+        self.advanced_map = advanced_scan()
+        self.advanced_map.Npoints = len(self.advanced_positions)
+        # Send the map object to worker object
+        self.worker.advanced_scan_map = self.advanced_map
+        self.worker.advanced_positions = self.advanced_positions
+        # Check if connected
+        # if self.connected:
+        #     # Pass SDK objects to worker thread
+        #     self.worker.nea = self.nea
+        #     self.worker.context = self.context
+        #     self.worker.motors = self.motors
+        #     self.worker.Vector3D = self.Vector3D
+            # Emit Signal to start scan at worker thread Slot
+        self.advanced_work_requested.emit()
+            # self.connect_snom_button.setEnabled(False)
+        # else:
+        #     self.status_bar_update('Connect to neaSNOM before scanning!')
+        #     print("No device was found")
+        #     msg = QMessageBox(self)
+        #     msg.setWindowTitle("No connection!")
+        #     msg.setText("Not connected to SNOM!")
+        #     msg.setIcon(QMessageBox.Critical)
+        #     msg.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
+        #     buttonConnect = msg.button(QMessageBox.Ok)
+        #     buttonConnect.setText('Connect')
+        #     msg.setInformativeText("Connect to neaSNOM first! Click OK to connect!")
+        #     button = msg.exec_()
+        #     if button == QMessageBox.Ok:
+        #         self.connect_to_neasnom()
+        #     else:
+        #         pass
+
+    def abort_advanced(self):
+        self.worker.advanced_aborted = True
             
     def update_scan_progress(self, v):
         self.currentZindex = v
@@ -484,7 +763,12 @@ class MainWindow(uiclass, baseclass):
         self.set_display_data(self.mirror_map)
         self.update_image()
         # self.statusbar.showMessage(f'X = {self.worker.scan_map.X[-1]}, Y = {self.worker.scan_map.Y[-1]}, Z = {self.worker.scan_map.Z[-1]}')
-        
+
+    def update_advanced_scan_progress(self, v):
+        self.advanced_map = self.worker.advanced_scan_map
+        self.set_advanced_display(self.advanced_map)
+        self.update_advanced_plot()
+
     def scan_complete(self):
         # Push measured map to display
         self.mirror_map = self.worker.scan_map
@@ -504,9 +788,26 @@ class MainWindow(uiclass, baseclass):
                 fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_3D_Mirror_scan_{self.mirror_map.sizeX}x{self.mirror_map.sizeY}x{self.mirror_map.sizeZ}um.dat'
             self.save_data(fname=fname)
 
+    def advanced_scan_complete(self):
+        # Push measured map to display
+        self.advanced_map = self.worker.advanced_scan_map
+        self.center_pos_abs = self.advanced_map.center_point
+        self.center_pos_rel = [0,0]
+        self.center_marker = [{'pos': self.center_pos_rel, 'data': 1}]
+        self.set_advanced_display(self.advanced_map)
+        self.update_advanced_plot()
+        self.loaded_advanced_map = None
+        # self.connect_snom_button_adv.setEnabled(True)
+
+        if os.path.exists("temp.txt"):
+            os.remove("temp.txt")
+        if self.AutosaveCheckBox.isChecked():
+            fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_Nonuniform_Mirror_scan_{self.advanced_map.Npoints}point.dat'
+            self.save_data(fname=fname)
+
     def status_bar_update(self, m):
         self.statusbar.showMessage(m)
-        print(m)
+        # print(m)
 
     def enable_move_to_point(self):
         if self.connected:
@@ -618,6 +919,23 @@ class mirror_scan:
         self.X = np.zeros((self.Nz,self.Nx,self.Ny))
         self.Y = np.zeros((self.Nz,self.Nx,self.Ny))
         self.Z = np.zeros((self.Nz,self.Nx,self.Ny))
+
+class advanced_scan:
+    def __init__(self):
+        # Parameters
+        self.center_point = None
+
+        self.Npoints = None
+
+        # Data
+        self.O1A = []
+        self.O2A = []
+        self.O3A = []
+        self.O4A = []
+
+        self.X = []
+        self.Y = []
+        self.Z = []
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

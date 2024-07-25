@@ -510,6 +510,7 @@ class MainWindow(uiclass, baseclass):
             self.advanced_positions = np.loadtxt(file_name)
             self.advanced_positions *= 1000
             print(f"Number of positions: {len(self.advanced_positions)}")
+            self.number_of_points_label.setText(f"Number of positions: {len(self.advanced_positions)}")
         except IOError as e:
             self.status_bar_update("No file was loaded")
 
@@ -532,8 +533,9 @@ class MainWindow(uiclass, baseclass):
         colors[:,0:3] = self.calculateColors(data = to_plot, vmin = minval, vmax = maxval)
         alphas = (to_plot-minval)/(maxval-minval)
         colors[:,3] = alphas
+        sizescaling = 1
 
-        self.plot3DItem.setData(pos=pos, color=colors, size=1)
+        self.plot3DItem.setData(pos=pos, color=colors, size=alphas*sizescaling)
 
     def calculateColors(self, data, vmin, vmax, colormapname = "viridis", n=256):
         # Make lookuptable

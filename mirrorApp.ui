@@ -24,7 +24,7 @@
        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab_simple">
        <attribute name="title">
@@ -663,6 +663,13 @@
            </spacer>
           </item>
           <item>
+           <widget class="QPushButton" name="abort_button">
+            <property name="text">
+             <string>Abort</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="move_to_button">
             <property name="text">
              <string>Move to</string>
@@ -997,7 +1004,7 @@
             </spacer>
            </item>
            <item>
-            <widget class="QPushButton" name="star_scan_adv_button">
+            <widget class="QPushButton" name="start_scan_adv_button">
              <property name="minimumSize">
               <size>
                <width>0</width>

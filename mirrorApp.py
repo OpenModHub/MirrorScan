@@ -48,6 +48,7 @@ class Worker(QObject):
         self.motors = None
         self.Vector3D = None
         self.advanced_aborted = False
+        self.aborted = False
 
     @Slot()
     def do_scan(self):
@@ -108,10 +109,19 @@ class Worker(QObject):
                     self.scan_map.X[idz,idy,idx] = newx
                     self.scan_map.Y[idz,idy,idx] = newy
                     self.scan_map.Z[idz,idy,idx] = newz
+
+                    # Update timer, display and statusbar
                     steptime = timer()
                     remtime = (steptime-startime)/counter*(self.scan_map.Nx*self.scan_map.Ny*self.scan_map.Nz-counter)
                     self.progress.emit(counterZ)
                     self.status_update.emit(f'X: {newx}, Y: {newy}, Z: {newz} Remaining time: {datetime.timedelta(seconds=remtime)}')
+                    if self.aborted:
+                        break
+                if self.aborted:
+                    break
+            if self.aborted:
+                break
+            # Update Z progress
             counterZ += 1
             if self.scan_map.Nz > 1:
                 self.Zcompleted.emit()
@@ -129,7 +139,11 @@ class Worker(QObject):
         current_pos = p.absolute_position
         self.scan_map.center_point = current_pos
         self.status_update.emit(f'Mirror position AFTER movement: {current_pos}')
-        self.completed.emit()
+
+        if self.aborted:
+            self.aborted = False
+        else:
+            self.completed.emit()
 
     def go_to_center(self,map,p):
         # REAL FUNCTION
@@ -208,6 +222,8 @@ class Worker(QObject):
             # self.advanced_scan_map.O2A[i] = self.context.Microscope.Py.OpticalAmplitude[2]
             # self.advanced_scan_map.O3A[i] = self.context.Microscope.Py.OpticalAmplitude[3]
             # self.advanced_scan_map.O4A[i] = self.context.Microscope.Py.OpticalAmplitude[4]
+
+            # FAKE TEST VALUES
             vv = np.array([xs[i],ys[i],zs[i]])
             self.advanced_scan_map.O1A.append(np.linalg.norm(vv))
             self.advanced_scan_map.O2A.append(np.linalg.norm(vv))
@@ -222,11 +238,13 @@ class Worker(QObject):
             newx = xs[i]
             newy = ys[i]
             newz = zs[i]
+            # Store the updated positions
             self.advanced_scan_map.X.append(newx)
             self.advanced_scan_map.Y.append(newy)
             self.advanced_scan_map.Z.append(newz)
-
             sleep(0.1)
+
+            # Update display and statusbar
             self.advanced_progress.emit(counter)
             steptime = timer()
             remtime = (steptime-startime)/counter*(self.advanced_scan_map.Npoints-counter)
@@ -236,22 +254,14 @@ class Worker(QObject):
 
         sleep(0.5)
         # Go back to the original position
-        # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
-        # dx = current_pos[0]-p.absolute_position[0]
-        # dy = current_pos[1]-p.absolute_position[1]
-        # dz = current_pos[2]-p.absolute_position[2]
-        # p.go_relative(dx,dy,dz)
-        # p.await_movement()
-        # Check position after going back:
-        # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
-        # current_pos = p.absolute_position
-        # self.advanced_scan_map.center_point = current_pos
         if self.advanced_aborted:
+            # CHANGE THIS TO p=p
             self.go_to_center(self.advanced_scan_map,p=None)
             self.status_update.emit(f'Scan was ABORTED!!! Tip position: {self.advanced_scan_map.center_point}')
             self.advanced_aborted = False
         else:
-            self.status_update.emit(f'Mirror position AFTER movement: {current_pos}')
+            self.go_to_center(self.advanced_scan_map,p=None)
+            self.status_update.emit(f'Mirror position AFTER scan: {current_pos}')
             self.advanced_completed.emit()
 
 ######## MAIN APPLICATION WINDOW CLASS ############
@@ -377,18 +387,17 @@ class MainWindow(uiclass, baseclass):
         self.load_coords_button.clicked.connect(self.load_advanced_points)
         self.load_meas_adv_button.clicked.connect(self.load_advanced_data)
         self.abort_adv_button.clicked.connect(self.abort_advanced)
+        self.abort_button.clicked.connect(self.abort_simple)
         self.show_coords_button.clicked.connect(self.show_advanced_points)
+        self.scan_button.clicked.connect(self.start_scan)
+        self.connect_snom_button.clicked.connect(self.connect_to_neasnom)
+        self.move_to_button.clicked.connect(self.enable_move_to_point)
+        self.save_button.clicked.connect(self.save_data)
 
         # Check if config file is modified
         self.check_config_file()
 
-        if not offline_mode:
-            self.scan_button.clicked.connect(self.start_scan)
-            self.connect_snom_button.clicked.connect(self.connect_to_neasnom)
-            self.move_to_button.clicked.connect(self.enable_move_to_point)
-            self.save_button.clicked.connect(self.save_data)
-
-        self.star_scan_adv_button.clicked.connect(self.start_advanced_scan)
+        self.start_scan_adv_button.clicked.connect(self.start_advanced_scan)
 
         if offline_mode:
             # simaple buttons
@@ -398,8 +407,9 @@ class MainWindow(uiclass, baseclass):
             self.scan_button.setEnabled(False)
             self.save_button.setEnabled(False)
             # advanced buttons
-            # self.star_scan_adv_button.setEnable(False)
+            # self.start_scan_adv_button.setEnable(False)
             self.abort_adv_button.setEnabled(False)
+            self.abort_button.setEnabled(False)
 
     def check_config_file(self):   # load config
         with open('config.yaml', 'r') as file:
@@ -662,7 +672,7 @@ class MainWindow(uiclass, baseclass):
         self.scatterItem.clear()
         self.scatterItem.addPoints(self.center_marker)
         self.click_move_enabled = False
-        self.move_to_button.setEnabled(True)
+        self.move_to_button.setEnabled(True) # why is this here ??????
 
     def data_scroll(self):
         if (self.loaded_map == None) & (self.mirror_map == None):
@@ -767,6 +777,10 @@ class MainWindow(uiclass, baseclass):
             # Emit Signal to start scan at worker thread Slot
             self.work_requested.emit()
             self.connect_snom_button.setEnabled(False)
+            self.scan_button.setEnabled(False)
+            self.abort_button.setEnabled(True)
+            self.choose_file_button.setEnabled(False)
+            self.save_button.setEnabled(False)
         else:
             self.status_bar_update('Connect to neaSNOM before scanning!')
             print("No device was found")
@@ -842,8 +856,15 @@ class MainWindow(uiclass, baseclass):
         self.load_meas_adv_button.setEnabled(True)
         self.load_coords_button.setEnabled(True)
         self.show_coords_button.setEnabled(True)
-        self.star_scan_adv_button.setEnabled(True)
+        self.start_scan_adv_button.setEnabled(True)
         self.abort_adv_button.setEnabled(False)
+
+    def abort_simple(self):
+        self.worker.aborted = True
+        self.choose_file_button.setEnabled(True)
+        self.scan_button.setEnabled(True)
+        self.abort_button.setEnabled(False)
+        self.connect_snom_button.setEnabled(True)
             
     def update_scan_progress(self, v):
         self.currentZindex = v
@@ -866,7 +887,14 @@ class MainWindow(uiclass, baseclass):
         self.set_display_data(self.mirror_map)
         self.update_image()
         self.loaded_map = None
+
+        #Enable buttons again
         self.connect_snom_button.setEnabled(True)
+        self.scan_button.setEnabled(True)
+        self.abort_button.setEnabled(False)
+        self.choose_file_button.setEnabled(True)
+        self.save_button.setEnabled(True)
+
         if os.path.exists("temp.txt"):
             os.remove("temp.txt")
         if self.AutosaveCheckBox.isChecked():
@@ -904,7 +932,7 @@ class MainWindow(uiclass, baseclass):
         self.load_meas_adv_button.setEnabled(False)
         self.load_coords_button.setEnabled(False)
         self.show_coords_button.setEnabled(False)
-        self.star_scan_adv_button.setEnabled(False)
+        self.start_scan_adv_button.setEnabled(False)
         self.abort_adv_button.setEnabled(True)
 
     def status_bar_update(self, m):

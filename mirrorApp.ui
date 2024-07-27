@@ -24,7 +24,7 @@
        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab_simple">
        <attribute name="title">
@@ -295,7 +295,7 @@
                <bool>false</bool>
               </property>
               <property name="decimals">
-               <number>2</number>
+               <number>4</number>
               </property>
               <property name="maximum">
                <double>1000.000000000000000</double>
@@ -332,7 +332,7 @@
                <bool>false</bool>
               </property>
               <property name="decimals">
-               <number>0</number>
+               <number>4</number>
               </property>
               <property name="maximum">
                <double>3000.000000000000000</double>
@@ -351,7 +351,7 @@
                <bool>false</bool>
               </property>
               <property name="decimals">
-               <number>2</number>
+               <number>4</number>
               </property>
               <property name="maximum">
                <double>1000.000000000000000</double>
@@ -561,7 +561,7 @@
                <bool>false</bool>
               </property>
               <property name="decimals">
-               <number>2</number>
+               <number>4</number>
               </property>
               <property name="minimum">
                <double>0.500000000000000</double>

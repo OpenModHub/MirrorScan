@@ -849,7 +849,7 @@ class MainWindow(uiclass, baseclass):
         if os.path.exists("temp.txt"):
             os.remove("temp.txt")
         if self.AutosaveCheckBox.isChecked():
-            if self.scan_map.Nz == 1:
+            if self.mirror_map.Nz == 1:
                 fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_2D_Mirror_scan_{self.mirror_map.sizeX}x{self.mirror_map.sizeY}um.dat'
             else:
                 fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_3D_Mirror_scan_{self.mirror_map.sizeX}x{self.mirror_map.sizeY}x{self.mirror_map.sizeZ}um.dat'

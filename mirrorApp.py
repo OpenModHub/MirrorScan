@@ -38,6 +38,7 @@ class Worker(QObject):
     completed = Signal()
     advanced_completed = Signal()
     started = Signal()
+    advanced_started = Signal()
     status_update = Signal(str)
 
     def __init__(self):
@@ -153,7 +154,7 @@ class Worker(QObject):
 
     @Slot()
     def do_scan_advanced(self):
-        self.started.emit()
+        self.advanced_started.emit()
         # Create motor object
         # p = self.motors.Mirror()
         # if not p.is_active:
@@ -275,10 +276,12 @@ class MainWindow(uiclass, baseclass):
         # To store the measured maps
         self.mirror_map = None
         self.advanced_map = None
-        self.advanced_positions = []
+        self.advanced_positions = None
         # To store the loaded maps
         self.loaded_map = None
-        self.loaded_advanced_data = None
+        self.loaded_advanced_map = None
+        # The map the is currently plotted
+        self.advanced_map_to_plot = None
         # Flags
         self.sizes_linked = False
         self.step_sizes_linked = False
@@ -289,6 +292,8 @@ class MainWindow(uiclass, baseclass):
         # self.setStyleSheet("background-color: white;")
         self.channel_comboBox.addItems(['O1A', 'O2A', 'O3A','O4A'])
         self.channel_comboBox.setCurrentText('O3A')
+        self.advanced_channel_comboBox.addItems(['O1A', 'O2A', 'O3A','O4A'])
+        self.advanced_channel_comboBox.setCurrentText('O3A')
 
         # Linking button label correction
         txt = "\U0001F517"
@@ -299,11 +304,13 @@ class MainWindow(uiclass, baseclass):
         # Create the worker thread
         self.worker = Worker()
         self.worker_thread = QThread()
+        # Connected worker thread signals
         self.worker.progress.connect(self.update_scan_progress)
         self.worker.completed.connect(self.scan_complete)
         self.worker.Zcompleted.connect(self.save_data(fname='temp.dat'))
         self.worker.advanced_progress.connect(self.update_advanced_scan_progress)
         self.worker.advanced_completed.connect(self.advanced_scan_complete)
+        self.worker.advanced_started.connect(self.advanced_scan_started)
         self.worker.status_update.connect(self.status_bar_update)
         self.work_requested.connect(self.worker.do_scan)
         self.advanced_work_requested.connect(self.worker.do_scan_advanced)
@@ -364,6 +371,7 @@ class MainWindow(uiclass, baseclass):
         self.choose_file_button.clicked.connect(self.choose_file)
         self.datascroll_spinBox.valueChanged.connect(self.data_scroll)
         self.channel_comboBox.currentIndexChanged.connect(self.channel_change)
+        self.advanced_channel_comboBox.currentIndexChanged.connect(self.advanced_channel_change)
         self.linkSizeButton.clicked.connect(self.link_scan_size)
         self.linkStepSizeButton.clicked.connect(self.link_scan_step_size)
         self.load_coords_button.clicked.connect(self.load_advanced_points)
@@ -388,6 +396,7 @@ class MainWindow(uiclass, baseclass):
             self.save_button.setEnabled(False)
             # advanced buttons
             # self.star_scan_adv_button.setEnable(False)
+            self.abort_adv_button.setEnabled(False)
 
     def connect_to_neasnom(self):
         if "nea_tools" not in sys.modules:
@@ -408,7 +417,7 @@ class MainWindow(uiclass, baseclass):
             try:
                 loop.run_until_complete(nea_tools.connect(host, fingerprint, path_to_dll))
             except ConnectionError:
-                print("Disable the WiFi connection!")
+                print("Could not connect!")
             try:
                 from neaspec import context
                 import Nea.Client.SharedDefinitions as nea
@@ -489,19 +498,23 @@ class MainWindow(uiclass, baseclass):
         fname = QFileDialog.getOpenFileName(self, "Choose file","","Datatext files (*.txt *.dat)")
         file_name = fname[0]
         # Create scan object
-        self.loaded_advanced_map = advanced_scan()
-        # Load data
-        data = np.loadtxt(file_name)
-        self.loaded_advanced_map.X = data[:,0]
-        self.loaded_advanced_map.Y = data[:,1]
-        self.loaded_advanced_map.Z = data[:,2]
-        self.loaded_advanced_map.O1A = data[:,3]
-        self.loaded_advanced_map.O2A = data[:,4]
-        self.loaded_advanced_map.O3A = data[:,5]
-        self.loaded_advanced_map.O4A = data[:,6]
+        try:
+            self.loaded_advanced_map = advanced_scan()
+            # Load data
+            data = np.loadtxt(file_name)
+            self.loaded_advanced_map.X = data[:,0]
+            self.loaded_advanced_map.Y = data[:,1]
+            self.loaded_advanced_map.Z = data[:,2]
+            self.loaded_advanced_map.O1A = data[:,3]
+            self.loaded_advanced_map.O2A = data[:,4]
+            self.loaded_advanced_map.O3A = data[:,5]
+            self.loaded_advanced_map.O4A = data[:,6]
 
-        self.set_advanced_display(self.loaded_advanced_map)
-        self.update_advanced_plot()
+            self.set_advanced_display(self.loaded_advanced_map)
+            self.update_advanced_plot()
+        except IOError as e:
+            self.loaded_advanced_map = None
+            self.status_bar_update("No file was loaded")
 
     def load_advanced_points(self):
         fname = QFileDialog.getOpenFileName(self, "Choose file","","Datatext files (*.txt *.dat)")
@@ -511,6 +524,9 @@ class MainWindow(uiclass, baseclass):
             self.advanced_positions *= 1000
             print(f"Number of positions: {len(self.advanced_positions)}")
             self.number_of_points_label.setText(f"Number of positions: {len(self.advanced_positions)}")
+            self.xrange_label.setText(f"X range: {np.min(self.advanced_positions[:,0])} - {np.max(self.advanced_positions[:,0])}")
+            self.yrange_label.setText(f"Y range: {np.min(self.advanced_positions[:,1])} - {np.max(self.advanced_positions[:,1])}")
+            self.zrange_label.setText(f"Z range: {np.min(self.advanced_positions[:,2])} - {np.max(self.advanced_positions[:,2])}")
         except IOError as e:
             self.status_bar_update("No file was loaded")
 
@@ -525,7 +541,8 @@ class MainWindow(uiclass, baseclass):
         pos[:,2] = np.asarray(self.advanced_map_to_plot.Z)/1000
         colors = np.ones((pos.shape[0], 4))
 
-        to_plot = 1-np.array(self.advanced_map_to_plot.O2A)
+        to_plot = 1 - np.array(getattr(self.advanced_map_to_plot,self.advanced_channel_comboBox.currentText()))
+        # to_plot = 1-np.array(self.advanced_map_to_plot.O2A)
 
         minval = np.min(to_plot)
         maxval = np.max(to_plot)
@@ -559,6 +576,23 @@ class MainWindow(uiclass, baseclass):
         return scaled_values
 
     def show_advanced_points(self):
+        if self.advanced_positions is None:
+            self.status_bar_update('No positions were loaded for advanced scan!')
+            print("No positions loaded")
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Missing point positions")
+            msg.setText("Positions of measurement points are not defined")
+            msg.setIcon(QMessageBox.Critical)
+            msg.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
+            buttonConnect = msg.button(QMessageBox.Ok)
+            buttonConnect.setText('Choose file')
+            msg.setInformativeText("Click 'Choose file' to browse for text file defining point positions")
+            button = msg.exec()
+            if button == QMessageBox.Ok:
+                self.load_advanced_points()
+            else:
+                return None
+        
         point_map = advanced_scan()
         # Load data
         point_map.X = self.advanced_positions[:,0]
@@ -567,9 +601,9 @@ class MainWindow(uiclass, baseclass):
         for i in range(np.shape(point_map.X)[0]):
             vv = np.array([point_map.X[i],point_map.Y[i],point_map.Z[i]])
             point_map.O1A.append(np.linalg.norm(vv))
-            point_map.O2A.append(np.linalg.norm(vv))
-            point_map.O3A.append(np.linalg.norm(vv))
-            point_map.O4A.append(np.linalg.norm(vv))
+            point_map.O2A.append(pow(np.linalg.norm(vv),2))
+            point_map.O3A.append(np.sqrt(np.linalg.norm(vv)))
+            point_map.O4A.append(np.log(np.linalg.norm(vv)))
         self.set_advanced_display(point_map)
         self.update_advanced_plot()
 
@@ -629,6 +663,13 @@ class MainWindow(uiclass, baseclass):
         else:
             self.set_display_data(self.loaded_map)
             self.update_image()
+            self.statusbar.showMessage(f"Channel changed to {self.channel_comboBox.currentText()}")
+
+    def advanced_channel_change(self):
+        if (self.advanced_map_to_plot == None):
+            self.statusbar.showMessage(f"No scan data to display!")
+        else:
+            self.update_advanced_plot()
             self.statusbar.showMessage(f"Channel changed to {self.channel_comboBox.currentText()}")
 
     def imageHoverEvent(self,event):
@@ -716,27 +757,46 @@ class MainWindow(uiclass, baseclass):
             buttonConnect = msg.button(QMessageBox.Ok)
             buttonConnect.setText('Connect')
             msg.setInformativeText("Connect to neaSNOM first! Click OK to connect!")
-            button = msg.exec_()
+            button = msg.exec()
             if button == QMessageBox.Ok:
                 self.connect_to_neasnom()
             else:
                 pass
     
     def start_advanced_scan(self):
+        # Check if positions were loaded an send them to worker thread
+        if self.advanced_positions is not None:
+            self.worker.advanced_positions = self.advanced_positions
+        else:
+            self.status_bar_update('No positions were loaded for advanced scan!')
+            print("No positions loaded")
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Missing point positions")
+            msg.setText("Positions of measurement points are not defined")
+            msg.setIcon(QMessageBox.Critical)
+            msg.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
+            buttonConnect = msg.button(QMessageBox.Ok)
+            buttonConnect.setText('Choose file')
+            msg.setInformativeText("Click 'Choose file' to browse for text file defining point positions")
+            button = msg.exec()
+            if button == QMessageBox.Ok:
+                self.load_advanced_points()
+                self.worker.advanced_positions = self.advanced_positions
+            else:
+                return None
         # Create map object and set up scan parameters
         self.advanced_map = advanced_scan()
         self.advanced_map.Npoints = len(self.advanced_positions)
         # Send the map object to worker object
         self.worker.advanced_scan_map = self.advanced_map
-        self.worker.advanced_positions = self.advanced_positions
-        # Check if connected
+        # Check if connected to SNOM
         # if self.connected:
         #     # Pass SDK objects to worker thread
         #     self.worker.nea = self.nea
         #     self.worker.context = self.context
         #     self.worker.motors = self.motors
         #     self.worker.Vector3D = self.Vector3D
-            # Emit Signal to start scan at worker thread Slot
+        # Emit Signal to start scan at worker thread Slot
         self.advanced_work_requested.emit()
             # self.connect_snom_button.setEnabled(False)
         # else:
@@ -750,7 +810,7 @@ class MainWindow(uiclass, baseclass):
         #     buttonConnect = msg.button(QMessageBox.Ok)
         #     buttonConnect.setText('Connect')
         #     msg.setInformativeText("Connect to neaSNOM first! Click OK to connect!")
-        #     button = msg.exec_()
+        #     button = msg.exec()
         #     if button == QMessageBox.Ok:
         #         self.connect_to_neasnom()
         #     else:
@@ -758,6 +818,11 @@ class MainWindow(uiclass, baseclass):
 
     def abort_advanced(self):
         self.worker.advanced_aborted = True
+        self.load_meas_adv_button.setEnabled(True)
+        self.load_coords_button.setEnabled(True)
+        self.show_coords_button.setEnabled(True)
+        self.star_scan_adv_button.setEnabled(True)
+        self.abort_adv_button.setEnabled(False)
             
     def update_scan_progress(self, v):
         self.currentZindex = v
@@ -799,13 +864,27 @@ class MainWindow(uiclass, baseclass):
         self.set_advanced_display(self.advanced_map)
         self.update_advanced_plot()
         self.loaded_advanced_map = None
+
+        # Enable buttons again
         # self.connect_snom_button_adv.setEnabled(True)
+        self.load_meas_adv_button.setEnabled(True)
+        self.load_coords_button.setEnabled(True)
+        self.show_coords_button.setEnabled(True)
+        self.star_scan_adv_button.setEnabled(True)
+        self.abort_adv_button.setEnabled(False)
 
         if os.path.exists("temp.txt"):
             os.remove("temp.txt")
         if self.AutosaveCheckBox.isChecked():
             fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_Nonuniform_Mirror_scan_{self.advanced_map.Npoints}point.dat'
             self.save_data(fname=fname)
+
+    def advanced_scan_started(self):
+        self.load_meas_adv_button.setEnabled(False)
+        self.load_coords_button.setEnabled(False)
+        self.show_coords_button.setEnabled(False)
+        self.star_scan_adv_button.setEnabled(False)
+        self.abort_adv_button.setEnabled(True)
 
     def status_bar_update(self, m):
         self.statusbar.showMessage(m)
@@ -825,7 +904,7 @@ class MainWindow(uiclass, baseclass):
                 msg.setIcon(QMessageBox.Critical)
                 msg.setStandardButtons(QMessageBox.Close)
                 msg.setInformativeText("Conduct a mirror scan first to be able to move to a specific position!")
-                msg.exec_()
+                msg.exec()
 
     def save_data(self, fname):
         if self.mirror_map is not None:

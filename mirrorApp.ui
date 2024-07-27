@@ -784,7 +784,7 @@
           </property>
           <layout class="QVBoxLayout" name="verticalLayout">
            <item>
-            <widget class="QLabel" name="label">
+            <widget class="QLabel" name="display_label_2">
              <property name="font">
               <font>
                <pointsize>16</pointsize>
@@ -806,6 +806,28 @@
              <property name="text">
               <string>Load measurement</string>
              </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="frame_3">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <layout class="QHBoxLayout" name="horizontalLayout_9">
+              <item>
+               <widget class="QLabel" name="advanced_channel_label">
+                <property name="text">
+                 <string>Channel</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QComboBox" name="advanced_channel_comboBox"/>
+              </item>
+             </layout>
             </widget>
            </item>
            <item>
@@ -853,6 +875,27 @@
              </property>
              <property name="text">
               <string>Number of points:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="xrange_label">
+             <property name="text">
+              <string>X range:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="yrange_label">
+             <property name="text">
+              <string>Y range:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="zrange_label">
+             <property name="text">
+              <string>Z range:</string>
              </property>
             </widget>
            </item>

@@ -6,8 +6,8 @@ It works only with neaSNOM devices equipped with position sensors on the mirror 
 
 Before starting the application for the first time please enter the appropriate information in the `config.yaml` file.
 
-Snapshot of the application window:
-![app_screenshot](/images/app_screenshot.png)
+Overview of the application:
+![app_screenshot](/images/overview.png)
 
 ## Working principle
 The application records the demodulated optical signals while changing the position of the parabolic mirror across the defined area.

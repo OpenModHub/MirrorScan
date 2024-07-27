@@ -13,10 +13,7 @@ from time import sleep
 import datetime
 from timeit import default_timer as timer
 
-# load config
-with open('config.yaml', 'r') as file:
-    config = yaml.safe_load(file)
-
+            
 try:
     import nea_tools
     offline_mode = False
@@ -271,8 +268,11 @@ class MainWindow(uiclass, baseclass):
         self.setupUi(self)
 
         # Other attributes and flags
+        self.offline_mode = offline_mode
         self.connected = False
         self.click_move_enabled = False
+        # config parameters for SNOM connection
+        self.config = None
         # To store the measured maps
         self.mirror_map = None
         self.advanced_map = None
@@ -379,6 +379,9 @@ class MainWindow(uiclass, baseclass):
         self.abort_adv_button.clicked.connect(self.abort_advanced)
         self.show_coords_button.clicked.connect(self.show_advanced_points)
 
+        # Check if config file is modified
+        self.check_config_file()
+
         if not offline_mode:
             self.scan_button.clicked.connect(self.start_scan)
             self.connect_snom_button.clicked.connect(self.connect_to_neasnom)
@@ -398,13 +401,31 @@ class MainWindow(uiclass, baseclass):
             # self.star_scan_adv_button.setEnable(False)
             self.abort_adv_button.setEnabled(False)
 
+    def check_config_file(self):   # load config
+        with open('config.yaml', 'r') as file:
+            self.config = yaml.safe_load(file)
+            if (self.config['fingerprint'] == 'CHANGEMEE') or (self.config['path_to_dll'] == r"CHANGEMEE"):
+                msg = QMessageBox()
+                msg.setWindowTitle("Configuration missing")
+                msg.setText("You have to set up neaSNOM configuration before use")
+                msg.setIcon(QMessageBox.Critical)
+                msg.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
+                buttonConnect = msg.button(QMessageBox.Ok)
+                buttonConnect.setText('Ok')
+                msg.setInformativeText("Click 'Ok' and set the parameters in the config.yaml file or click 'Cancel' to continue in offline mode")
+                button = msg.exec()
+                if button == QMessageBox.Ok:
+                    sys.exec()
+                elif button == QMessageBox.Cancel:
+                    self.offline_mode = True
+
     def connect_to_neasnom(self):
         if "nea_tools" not in sys.modules:
             return
 
         self.path_to_dll = ''# yaml.load('config.yaml')
-        path_to_dll = config['path_to_dll']
-        fingerprint = config['fingerprint']
+        path_to_dll = self.config['path_to_dll']
+        fingerprint = self.config['fingerprint']
         host = 'nea-server'
         if self.connected:
             print('\nDisconnecting from neaServer!')

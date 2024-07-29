@@ -393,6 +393,7 @@ class MainWindow(uiclass, baseclass):
         self.connect_snom_button.clicked.connect(self.connect_to_neasnom)
         self.move_to_button.clicked.connect(self.enable_move_to_point)
         self.save_button.clicked.connect(self.save_data)
+        self.adv_save_button.clicked.connect(self.save_adv_data)
 
         # Check if config file is modified
         self.check_config_file()
@@ -919,14 +920,14 @@ class MainWindow(uiclass, baseclass):
         self.load_meas_adv_button.setEnabled(True)
         self.load_coords_button.setEnabled(True)
         self.show_coords_button.setEnabled(True)
-        self.star_scan_adv_button.setEnabled(True)
+        self.start_scan_adv_button.setEnabled(True)
         self.abort_adv_button.setEnabled(False)
 
         if os.path.exists("temp.txt"):
             os.remove("temp.txt")
-        if self.AutosaveCheckBox.isChecked():
+        if self.adv_autosave_checkbox.isChecked():
             fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_Nonuniform_Mirror_scan_{self.advanced_map.Npoints}point.dat'
-            self.save_data(fname=fname)
+            self.save_adv_data()
 
     def advanced_scan_started(self):
         self.load_meas_adv_button.setEnabled(False)
@@ -968,6 +969,16 @@ class MainWindow(uiclass, baseclass):
             np.savetxt(fname, M.T,
                         header='\n'.join([f'SizeX = {self.mirror_map.sizeX}', f'SizeY = {self.mirror_map.sizeY}',f'SizeZ = {self.mirror_map.sizeZ}',
                         f'StepX = {self.mirror_map.step_sizeX}',f'StepY = {self.mirror_map.step_sizeY}',f'StepZ = {self.mirror_map.step_sizeZ}']))
+        else:
+            self.status_bar_update(m="There is no measurement to save")
+
+    def save_adv_data(self):
+        if self.advanced_map is not None:
+            M = np.array([self.advanced_map.X,self.advanced_map.Y,self.advanced_map.Z,self.advanced_map.O1A,self.advanced_map.O2A,self.advanced_map.O3A,self.advanced_map.O4A])
+            fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_Nonuniform_Mirror_scan_{self.advanced_map.Npoints}point.dat'
+            np.savetxt(fname, M.T)
+        else:
+            self.status_bar_update(m="There is no measurement to save")
 
     def link_scan_size(self):
         if self.sizes_linked:

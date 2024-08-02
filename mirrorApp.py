@@ -96,6 +96,11 @@ class Worker(QObject):
                     dz = z-posz
                     p.go_relative(dx,dy,dz)
                     p.await_movement()
+                    p.await_movement()
+                    if counter == 0:
+                        sleep(1)
+                    else:
+                        sleep(0.25)
                     # Read optical channels
                     self.scan_map.O1A[idz,idy,idx] = self.context.Microscope.Py.OpticalAmplitude[1]
                     self.scan_map.O2A[idz,idy,idx] = self.context.Microscope.Py.OpticalAmplitude[2]
@@ -147,121 +152,132 @@ class Worker(QObject):
 
     def go_to_center(self,map,p):
         # REAL FUNCTION
-        # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
-        # dx = map.center_point[0]-p.absolute_position[0]
-        # dy = map.center_point[1]-p.absolute_position[1]
-        # dz = map.center_point[2]-p.absolute_position[2]
-        # p.go_relative(dx,dy,dz)
-        # p.await_movement()
-        # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
-        # current_pos = p.absolute_position
-        # self.map.center_point = current_pos
-        # self.status_update.emit(f'Mirror position after RECENTERING: {self.map.center_point}')
+        self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+        dx = map.center_point[0]-p.absolute_position[0]
+        dy = map.center_point[1]-p.absolute_position[1]
+        dz = map.center_point[2]-p.absolute_position[2]
+        p.go_relative(dx,dy,dz)
+        p.await_movement()
+        self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+        current_pos = p.absolute_position
+        map.center_point = current_pos
+        self.status_update.emit(f'Mirror position after RECENTERING: {map.center_point}')
 
         # FOR TEST
-        map.center_point = [0.0,0.0,0.0]
-        self.status_update.emit(f'Mirror position after RECENTERING: {map.center_point}')
-        sleep(0.5)
+        # map.center_point = [0.0,0.0,0.0]
+        # self.status_update.emit(f'Mirror position after RECENTERING: {map.center_point}')
+        # sleep(0.5)
 
     @Slot()
     def do_scan_advanced(self):
         self.advanced_started.emit()
         # Create motor object
-        # p = self.motors.Mirror()
-        # if not p.is_active:
-        #     p.activate()
+        p = self.motors.Mirror()
+        if not p.is_active:
+            p.activate()
+
         # Set sampling interval
-        # self.context.Microscope.Py.SetSamplingTime(50)
+        self.context.Microscope.Py.SetSamplingTime(50)
+
         # Set motor speed
-        # safe_v = self.context.Microscope.Py.MirrorMotorVelocityInContacting
-        # v = self.Vector3D(safe_v,safe_v,safe_v)
-        # self.context.Microscope.Py.SetActiveMotorVelocityXyz(v)
-        # Update current position
-        # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
-        # current_pos = p.absolute_position
+        safe_v = self.context.Microscope.Py.MirrorMotorVelocityInContacting
+        v = self.Vector3D(safe_v,safe_v,safe_v)
+        self.context.Microscope.Py.SetActiveMotorVelocityXyz(v)
+
+        # Load the relative target positions
         xpositions = self.advanced_positions[:,0]
         ypositions = self.advanced_positions[:,1]
         zpositions = self.advanced_positions[:,2]
-        
-        current_pos = [0.0,0.0,0.0]
-        self.advanced_scan_map.center_point = current_pos
-        self.status_update.emit(f'Mirror position BEFORE movement: {current_pos}')
 
-        # Calculate mirror coordinates for movement
-        xs = current_pos[0] + xpositions
-        ys = current_pos[1] + ypositions
-        zs = current_pos[2] + zpositions
+        # Update current position
+        self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+        start_pos = p.absolute_position
+
+        # current_pos = [0.0,0.0,0.0]
+        self.advanced_scan_map.center_point = start_pos
+        self.status_update.emit(f'Mirror position BEFORE movement: {start_pos}')
+
+        # Calculate mirror coordinates for movement - this is already absolute positions
+        targetx = start_pos[0] + xpositions
+        targety = start_pos[1] + ypositions
+        targetz = start_pos[2] + zpositions
 
         # SCANNING LOOP
         counter = 0
         startime = timer()
         for i in range(self.advanced_scan_map.Npoints):
             counter += 1
-            # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
-            # posx = p.absolute_position[0]
-            # posy = p.absolute_position[1]
-            # posz = p.absolute_position[2]
-            if i == 0:
-                dx = xs[i] - current_pos[0]
-                dy = xs[i] - current_pos[1]
-                dz = ys[i] - current_pos[2]
-            else:
-                dx = xs[i] - xs[i-1]
-                dy = ys[i] - ys[i-1]
-                dz = zs[i] - zs[i-1]
+            self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+            currentx = p.absolute_position[0]
+            currenty = p.absolute_position[1]
+            currentz = p.absolute_position[2]
+            # if i == 0:
+            #     dx = xs[i] - current_pos[0]
+            #     dy = xs[i] - current_pos[1]
+            #     dz = ys[i] - current_pos[2]
+            # else:
+            #     dx = xs[i] - xs[i-1]
+            #     dy = ys[i] - ys[i-1]
+            #     dz = zs[i] - zs[i-1]
             
-            # dx = xs[i]-posx
-            # dy = ys[i]-posy
-            # dz = zs[i]-posz
-            # p.go_relative(dx,dy,dz)
-            # p.await_movement()
-            # print(f"Move relative: {dx},{dy},{dz}")
-
+            dx = targetx[i]-currentx
+            dy = targety[i]-currenty
+            dz = targetz[i]-currentz
+            p.go_relative(dx,dy,dz)
+            p.await_movement()
+            if counter == 0:
+                sleep(1)
+            else:
+                sleep(0.25)
+            print(f"Moved relative: {dx},{dy},{dz}")
+            
             # Read optical channels
-            # self.advanced_scan_map.O1A[i] = self.context.Microscope.Py.OpticalAmplitude[1]
-            # self.advanced_scan_map.O2A[i] = self.context.Microscope.Py.OpticalAmplitude[2]
-            # self.advanced_scan_map.O3A[i] = self.context.Microscope.Py.OpticalAmplitude[3]
-            # self.advanced_scan_map.O4A[i] = self.context.Microscope.Py.OpticalAmplitude[4]
+            self.advanced_scan_map.O1A.append(float(self.context.Microscope.Py.OpticalAmplitude[1]))
+            self.advanced_scan_map.O2A.append(float(self.context.Microscope.Py.OpticalAmplitude[2]))
+            self.advanced_scan_map.O3A.append(float(self.context.Microscope.Py.OpticalAmplitude[3]))
+            self.advanced_scan_map.O4A.append(float(self.context.Microscope.Py.OpticalAmplitude[4]))
 
-            # FAKE TEST VALUES
-            vv = np.array([xs[i],ys[i],zs[i]])
-            self.advanced_scan_map.O1A.append(np.linalg.norm(vv))
-            self.advanced_scan_map.O2A.append(np.linalg.norm(vv))
-            self.advanced_scan_map.O3A.append(np.linalg.norm(vv))
-            self.advanced_scan_map.O4A.append(np.linalg.norm(vv))
+            # # FAKE TEST VALUES
+            # vv = np.array([xs[i],ys[i],zs[i]])
+            # self.advanced_scan_map.O1A.append(np.linalg.norm(vv))
+            # self.advanced_scan_map.O2A.append(np.linalg.norm(vv))
+            # self.advanced_scan_map.O3A.append(np.linalg.norm(vv))
+            # self.advanced_scan_map.O4A.append(np.linalg.norm(vv))
 
             # Update real position
-            # self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
-            # newx = p.absolute_position[0]
-            # newy = p.absolute_position[1]
-            # newz = p.absolute_position[2]
-            newx = xs[i]
-            newy = ys[i]
-            newz = zs[i]
+            self.context.Microscope.RefreshActiveMotorPositionXyzAsync().Wait()
+            newx = p.absolute_position[0]
+            newy = p.absolute_position[1]
+            newz = p.absolute_position[2]
+            # newx = xs[i]
+            # newy = ys[i]
+            # newz = zs[i]
             # Store the updated positions
-            self.advanced_scan_map.X.append(newx)
-            self.advanced_scan_map.Y.append(newy)
-            self.advanced_scan_map.Z.append(newz)
-            sleep(0.1)
+            relposx = float(newx-start_pos[0])
+            relposy = float(newy-start_pos[1])
+            relposz = float(newz-start_pos[2])
+            self.advanced_scan_map.X.append(relposx)
+            self.advanced_scan_map.Y.append(relposy)
+            self.advanced_scan_map.Z.append(relposz)
 
             # Update display and statusbar
             self.advanced_progress.emit(counter)
             steptime = timer()
             remtime = (steptime-startime)/counter*(self.advanced_scan_map.Npoints-counter)
-            self.status_update.emit(f'X: {newx}, Y: {newy}, Z: {newz} Remaining time: {datetime.timedelta(seconds=remtime)}')
+            self.status_update.emit(f'X: {relposx}, Y: {relposy}, Z: {relposz} Remaining time: {datetime.timedelta(seconds=remtime)}')
+            print(f'X: {relposx}, Y: {relposy}, Z: {relposz} O3A data: {self.advanced_scan_map.O3A[-1]}')
             if self.advanced_aborted:
                 break
 
-        sleep(0.5)
         # Go back to the original position
         if self.advanced_aborted:
             # CHANGE THIS TO p=p
-            self.go_to_center(self.advanced_scan_map,p=None)
+            self.go_to_center(self.advanced_scan_map,p=p)
             self.status_update.emit(f'Scan was ABORTED!!! Tip position: {self.advanced_scan_map.center_point}')
             self.advanced_aborted = False
         else:
-            self.go_to_center(self.advanced_scan_map,p=None)
-            self.status_update.emit(f'Mirror position AFTER scan: {current_pos}')
+            self.go_to_center(self.advanced_scan_map,p=p)
+            self.status_update.emit(f'Mirror position AFTER scan: {start_pos}')
             self.advanced_completed.emit()
 
 ######## MAIN APPLICATION WINDOW CLASS ############
@@ -568,23 +584,25 @@ class MainWindow(uiclass, baseclass):
     def update_advanced_plot(self):
         pos = np.zeros((len(self.advanced_map_to_plot.X), 3))
         # color = np.ones((len(self.advanced_map_to_plot.X), 4))
-        pos[:,0] = np.asarray(self.advanced_map_to_plot.X)/1000
-        pos[:,1] = np.asarray(self.advanced_map_to_plot.Y)/1000
-        pos[:,2] = np.asarray(self.advanced_map_to_plot.Z)/1000
+        pos[:,0] = np.array(self.advanced_map_to_plot.X)/1000
+        pos[:,1] = np.array(self.advanced_map_to_plot.Y)/1000
+        pos[:,2] = np.array(self.advanced_map_to_plot.Z)/1000
         colors = np.ones((pos.shape[0], 4))
 
-        to_plot = 1 - np.array(getattr(self.advanced_map_to_plot,self.advanced_channel_comboBox.currentText()))
+        # to_plot = 1 - np.array(getattr(self.advanced_map_to_plot,self.advanced_channel_comboBox.currentText()))
+        to_plot = np.array(getattr(self.advanced_map_to_plot,self.advanced_channel_comboBox.currentText()))
         # to_plot = 1-np.array(self.advanced_map_to_plot.O2A)
 
         minval = np.min(to_plot)
         maxval = np.max(to_plot)
 
         colors[:,0:3] = self.calculateColors(data = to_plot, vmin = minval, vmax = maxval)
-        alphas = (to_plot-minval)/(maxval-minval)
-        colors[:,3] = alphas
+
+        # alphas = (to_plot-minval)/(maxval-minval)
+        # colors[:,3] = alphas
         sizescaling = 1
 
-        self.plot3DItem.setData(pos=pos, color=colors, size=alphas*sizescaling)
+        self.plot3DItem.setData(pos=pos, color=colors, size=1)
 
     def calculateColors(self, data, vmin, vmax, colormapname = "viridis", n=256):
         # Make lookuptable
@@ -636,6 +654,10 @@ class MainWindow(uiclass, baseclass):
             point_map.O2A.append(pow(np.linalg.norm(vv),2))
             point_map.O3A.append(np.sqrt(np.linalg.norm(vv)))
             point_map.O4A.append(np.log(np.linalg.norm(vv)))
+        point_map.O1A = np.max(point_map.O1A)-point_map.O1A
+        point_map.O2A = np.max(point_map.O2A)-point_map.O2A
+        point_map.O3A = np.max(point_map.O3A)-point_map.O3A
+        point_map.O4A = np.max(point_map.O4A)-point_map.O4A
         self.set_advanced_display(point_map)
         self.update_advanced_plot()
 
@@ -826,31 +848,31 @@ class MainWindow(uiclass, baseclass):
         # Send the map object to worker object
         self.worker.advanced_scan_map = self.advanced_map
         # Check if connected to SNOM
-        # if self.connected:
-        #     # Pass SDK objects to worker thread
-        #     self.worker.nea = self.nea
-        #     self.worker.context = self.context
-        #     self.worker.motors = self.motors
-        #     self.worker.Vector3D = self.Vector3D
-        # Emit Signal to start scan at worker thread Slot
-        self.advanced_work_requested.emit()
-            # self.connect_snom_button.setEnabled(False)
-        # else:
-        #     self.status_bar_update('Connect to neaSNOM before scanning!')
-        #     print("No device was found")
-        #     msg = QMessageBox(self)
-        #     msg.setWindowTitle("No connection!")
-        #     msg.setText("Not connected to SNOM!")
-        #     msg.setIcon(QMessageBox.Critical)
-        #     msg.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
-        #     buttonConnect = msg.button(QMessageBox.Ok)
-        #     buttonConnect.setText('Connect')
-        #     msg.setInformativeText("Connect to neaSNOM first! Click OK to connect!")
-        #     button = msg.exec()
-        #     if button == QMessageBox.Ok:
-        #         self.connect_to_neasnom()
-        #     else:
-        #         pass
+        if self.connected:
+            # Pass SDK objects to worker thread
+            self.worker.nea = self.nea
+            self.worker.context = self.context
+            self.worker.motors = self.motors
+            self.worker.Vector3D = self.Vector3D
+            # Emit Signal to start scan at worker thread Slot
+            self.advanced_work_requested.emit()
+            self.connect_snom_button.setEnabled(False)
+        else:
+            self.status_bar_update('Connect to neaSNOM before scanning!')
+            print("No device was found")
+            msg = QMessageBox(self)
+            msg.setWindowTitle("No connection!")
+            msg.setText("Not connected to SNOM!")
+            msg.setIcon(QMessageBox.Critical)
+            msg.setStandardButtons(QMessageBox.Ok|QMessageBox.Cancel)
+            buttonConnect = msg.button(QMessageBox.Ok)
+            buttonConnect.setText('Connect')
+            msg.setInformativeText("Connect to neaSNOM first! Click OK to connect!")
+            button = msg.exec()
+            if button == QMessageBox.Ok:
+                self.connect_to_neasnom()
+            else:
+                pass
 
     def abort_advanced(self):
         self.worker.advanced_aborted = True
@@ -859,6 +881,7 @@ class MainWindow(uiclass, baseclass):
         self.show_coords_button.setEnabled(True)
         self.start_scan_adv_button.setEnabled(True)
         self.abort_adv_button.setEnabled(False)
+        self.connect_snom_button.setEnabled(True)
 
     def abort_simple(self):
         self.worker.aborted = True
@@ -875,9 +898,11 @@ class MainWindow(uiclass, baseclass):
         # self.statusbar.showMessage(f'X = {self.worker.scan_map.X[-1]}, Y = {self.worker.scan_map.Y[-1]}, Z = {self.worker.scan_map.Z[-1]}')
 
     def update_advanced_scan_progress(self, v):
-        self.advanced_map = self.worker.advanced_scan_map
-        self.set_advanced_display(self.advanced_map)
-        self.update_advanced_plot()
+        if (v % 50) == 0:
+            self.advanced_map = self.worker.advanced_scan_map
+            self.save_adv_data(fname="temp.dat")
+        #     self.set_advanced_display(self.advanced_map)
+        #     self.update_advanced_plot()
 
     def scan_complete(self):
         # Push measured map to display
@@ -910,13 +935,13 @@ class MainWindow(uiclass, baseclass):
         self.advanced_map = self.worker.advanced_scan_map
         self.center_pos_abs = self.advanced_map.center_point
         self.center_pos_rel = [0,0]
-        self.center_marker = [{'pos': self.center_pos_rel, 'data': 1}]
+        # self.center_marker = [{'pos': self.center_pos_rel, 'data': 1}]
         self.set_advanced_display(self.advanced_map)
-        self.update_advanced_plot()
+        # self.update_advanced_plot()
         self.loaded_advanced_map = None
 
         # Enable buttons again
-        # self.connect_snom_button_adv.setEnabled(True)
+        self.connect_snom_button.setEnabled(True)
         self.load_meas_adv_button.setEnabled(True)
         self.load_coords_button.setEnabled(True)
         self.show_coords_button.setEnabled(True)
@@ -927,7 +952,7 @@ class MainWindow(uiclass, baseclass):
             os.remove("temp.txt")
         if self.adv_autosave_checkbox.isChecked():
             fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_Nonuniform_Mirror_scan_{self.advanced_map.Npoints}point.dat'
-            self.save_adv_data()
+            self.save_adv_data(fname = fname)
 
     def advanced_scan_started(self):
         self.load_meas_adv_button.setEnabled(False)
@@ -972,11 +997,12 @@ class MainWindow(uiclass, baseclass):
         else:
             self.status_bar_update(m="There is no measurement to save")
 
-    def save_adv_data(self):
+    def save_adv_data(self, fname):
         if self.advanced_map is not None:
             M = np.array([self.advanced_map.X,self.advanced_map.Y,self.advanced_map.Z,self.advanced_map.O1A,self.advanced_map.O2A,self.advanced_map.O3A,self.advanced_map.O4A])
-            fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_Nonuniform_Mirror_scan_{self.advanced_map.Npoints}point.dat'
+            # fname = f'{datetime.datetime.now().strftime("%Y.%m.%d-%H.%M")}_Nonuniform_Mirror_scan_{self.advanced_map.Npoints}point.dat'
             np.savetxt(fname, M.T)
+            print(f"Data were save to: {fname}")
         else:
             self.status_bar_update(m="There is no measurement to save")
 

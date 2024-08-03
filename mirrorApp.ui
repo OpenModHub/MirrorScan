@@ -737,7 +737,7 @@
        <attribute name="title">
         <string>Advanced</string>
        </attribute>
-       <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="1,1">
+       <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="0,1">
         <item>
          <widget class="GLViewWidget" name="plot_area_advanced" native="true">
           <property name="sizePolicy">
@@ -824,6 +824,12 @@
               <enum>QFrame::Raised</enum>
              </property>
              <layout class="QHBoxLayout" name="horizontalLayout_9">
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
               <item>
                <widget class="QLabel" name="advanced_channel_label">
                 <property name="text">
@@ -833,6 +839,82 @@
               </item>
               <item>
                <widget class="QComboBox" name="advanced_channel_comboBox"/>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="colormaps_frame">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <layout class="QHBoxLayout" name="horizontalLayout_12">
+              <property name="spacing">
+               <number>7</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <item>
+               <widget class="QLabel" name="colormaps_label">
+                <property name="sizeIncrement">
+                 <size>
+                  <width>1</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Colormaps</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QComboBox" name="colormaps_comboBox">
+                <property name="sizeIncrement">
+                 <size>
+                  <width>2</width>
+                  <height>0</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="frame_2">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <layout class="QHBoxLayout" name="horizontalLayout_11">
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <item>
+               <widget class="QCheckBox" name="transparency_checkBox">
+                <property name="text">
+                 <string>Transparency</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="sizescaling_checkBox">
+                <property name="text">
+                 <string>Size scaling</string>
+                </property>
+               </widget>
               </item>
              </layout>
             </widget>

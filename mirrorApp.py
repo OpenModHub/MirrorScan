@@ -320,6 +320,8 @@ class MainWindow(uiclass, baseclass):
         self.channel_comboBox.setCurrentText('O3A')
         self.advanced_channel_comboBox.addItems(['O1A', 'O2A', 'O3A','O4A'])
         self.advanced_channel_comboBox.setCurrentText('O3A')
+        self.colormaps_comboBox.addItems(pg.colormap.listMaps('matplotlib'))
+        self.colormaps_comboBox.setCurrentText('turbo')
 
         # Linking button label correction
         txt = "\U0001F517"
@@ -410,6 +412,9 @@ class MainWindow(uiclass, baseclass):
         self.move_to_button.clicked.connect(self.enable_move_to_point)
         self.save_button.clicked.connect(self.save_data)
         self.adv_save_button.clicked.connect(self.save_adv_data)
+        self.transparency_checkBox.stateChanged.connect(self.update_advanced_plot)
+        self.sizescaling_checkBox.stateChanged.connect(self.update_advanced_plot)
+        self.colormaps_comboBox.currentTextChanged.connect(self.update_advanced_plot)
 
         # Check if config file is modified
         self.check_config_file()
@@ -596,13 +601,22 @@ class MainWindow(uiclass, baseclass):
         minval = np.min(to_plot)
         maxval = np.max(to_plot)
 
-        colors[:,0:3] = self.calculateColors(data = to_plot, vmin = minval, vmax = maxval)
+        cmapname = self.colormaps_comboBox.currentText()
+        colors[:,0:3] = self.calculateColors(data = to_plot, vmin = minval, vmax = maxval, colormapname = cmapname)
 
-        # alphas = (to_plot-minval)/(maxval-minval)
-        # colors[:,3] = alphas
+        alphas = (to_plot-minval)/(maxval-minval)
+        if self.transparency_checkBox.isChecked():
+            colors[:,3] = alphas
+        else:
+            pass
+        
         sizescaling = 1
+        if self.sizescaling_checkBox.isChecked():
+            sizes = alphas*sizescaling
+        else:
+            sizes = 1
 
-        self.plot3DItem.setData(pos=pos, color=colors, size=1)
+        self.plot3DItem.setData(pos=pos, color=colors, size=sizes)
 
     def calculateColors(self, data, vmin, vmax, colormapname = "viridis", n=256):
         # Make lookuptable

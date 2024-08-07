@@ -320,7 +320,8 @@ class MainWindow(uiclass, baseclass):
         self.channel_comboBox.setCurrentText('O3A')
         self.advanced_channel_comboBox.addItems(['O1A', 'O2A', 'O3A','O4A'])
         self.advanced_channel_comboBox.setCurrentText('O3A')
-        self.colormaps_comboBox.addItems(pg.colormap.listMaps('matplotlib'))
+        # self.colormaps_comboBox.addItems(pg.colormap.listMaps('matplotlib'))
+        self.colormaps_comboBox.addItems(['magma','inferno',"plasma","viridis","cividis"])
         self.colormaps_comboBox.setCurrentText('turbo')
 
         # Linking button label correction
@@ -562,9 +563,11 @@ class MainWindow(uiclass, baseclass):
             self.loaded_advanced_map.O2A = data[:,4]
             self.loaded_advanced_map.O3A = data[:,5]
             self.loaded_advanced_map.O4A = data[:,6]
-
-            self.set_advanced_display(self.loaded_advanced_map)
-            self.update_advanced_plot()
+            try:
+                self.set_advanced_display(self.loaded_advanced_map)
+                self.update_advanced_plot()
+            except:
+                print("Display went wrong! Try to choose another colorscale!")
         except IOError as e:
             self.loaded_advanced_map = None
             self.status_bar_update("No file was loaded")

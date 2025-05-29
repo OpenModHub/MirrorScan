@@ -96,11 +96,10 @@ class Worker(QObject):
                     dz = z-posz
                     p.go_relative(dx,dy,dz)
                     p.await_movement()
-                    p.await_movement()
                     if counter == 0:
                         sleep(1)
                     else:
-                        sleep(0.25)
+                        sleep(0.3)
                     # Read optical channels
                     self.scan_map.O1A[idz,idy,idx] = self.context.Microscope.Py.OpticalAmplitude[1]
                     self.scan_map.O2A[idz,idy,idx] = self.context.Microscope.Py.OpticalAmplitude[2]
@@ -130,6 +129,7 @@ class Worker(QObject):
             counterZ += 1
             if self.scan_map.Nz > 1:
                 self.Zcompleted.emit()
+            sleep(1)
         sleep(0.5)
 
         # Go back to the original position
@@ -411,7 +411,7 @@ class MainWindow(uiclass, baseclass):
         self.scan_button.clicked.connect(self.start_scan)
         self.connect_snom_button.clicked.connect(self.connect_to_neasnom)
         self.move_to_button.clicked.connect(self.enable_move_to_point)
-        self.save_button.clicked.connect(self.save_data)
+        self.save_button.clicked.connect(self.save_data_btn_callback)
         self.adv_save_button.clicked.connect(self.save_adv_data)
         self.transparency_checkBox.stateChanged.connect(self.update_advanced_plot)
         self.sizescaling_checkBox.stateChanged.connect(self.update_advanced_plot)
@@ -691,7 +691,7 @@ class MainWindow(uiclass, baseclass):
             self.zeroZ_data = self.meas_data[self.currentZindex,:,:]
             self.data_to_plot = self.zeroZ_data
             self.datascroll_spinBox.setValue(self.currentZindex) #Here should come counterZ
-            self.datascroll_spinBox.setRange(0, self.currentZindex)
+            self.datascroll_spinBox.setRange(0, map.Nz)
             self.datascroll_spinBox.setEnabled(True)
             self.cbar.setLevels(values = (np.min(self.zeroZ_data),np.max(self.zeroZ_data)))
 
@@ -795,12 +795,12 @@ class MainWindow(uiclass, baseclass):
     def start_scan(self):
         # Create map object and set up scan parameters
         self.mirror_map = mirror_scan()
-        self.mirror_map.step_sizeX = self.stepX_spinBox.value()*1000 #in nm
-        self.mirror_map.step_sizeY = self.stepY_spinBox.value()*1000
-        self.mirror_map.step_sizeZ = self.stepZ_spinBox.value()*1000
-        self.mirror_map.sizeX = self.sizeX_spinBox.value()*1000
-        self.mirror_map.sizeY = self.sizeY_spinBox.value()*1000
-        self.mirror_map.sizeZ = self.sizeZ_spinBox.value()*1000
+        self.mirror_map.step_sizeX = round(self.stepX_spinBox.value()*1000) #in nm
+        self.mirror_map.step_sizeY = round(self.stepY_spinBox.value()*1000)
+        self.mirror_map.step_sizeZ = round(self.stepZ_spinBox.value()*1000)
+        self.mirror_map.sizeX = round(self.sizeX_spinBox.value()*1000)
+        self.mirror_map.sizeY = round(self.sizeY_spinBox.value()*1000)
+        self.mirror_map.sizeZ = round(self.sizeZ_spinBox.value()*1000)
         self.mirror_map.recalc_size()
         self.mirror_map.create_array()
         self.Zaxis = np.linspace(-self.mirror_map.sizeZ/2,self.mirror_map.sizeZ/2,self.mirror_map.Nz)
@@ -998,6 +998,15 @@ class MainWindow(uiclass, baseclass):
                 msg.setInformativeText("Conduct a mirror scan first to be able to move to a specific position!")
                 msg.exec()
 
+    def save_data_btn_callback(self):
+        if self.mirror_map is not None:
+            fname = QFileDialog.getSaveFileName(self, "Save data", "", "Data files (*.dat *.txt)")
+            if fname[0]:
+                self.save_data(fname[0])
+                self.status_bar_update(f"Data saved to {fname[0]}")
+        else:
+            self.status_bar_update("There is no measurement to save")
+
     def save_data(self, fname):
         if self.mirror_map is not None:
             X = self.mirror_map.X.flatten()
@@ -1089,10 +1098,12 @@ class mirror_scan:
         self.Nx = int(self.sizeX/self.step_sizeX)
         self.Ny = int(self.sizeY/self.step_sizeY)
         self.Nz = int(self.sizeZ/self.step_sizeZ)
+        print(f'Nx: {self.Nx}, Ny: {self.Ny}')
         if self.Nz == 0:
             self.Nz = 1
         else:
             self.Nz = int(self.sizeZ/self.step_sizeZ)
+            print(f'Nz: {self.Nz}')
 
     def create_array(self):
         self.O1A = np.zeros((self.Nz,self.Nx,self.Ny))
@@ -1103,6 +1114,8 @@ class mirror_scan:
         self.X = np.zeros((self.Nz,self.Nx,self.Ny))
         self.Y = np.zeros((self.Nz,self.Nx,self.Ny))
         self.Z = np.zeros((self.Nz,self.Nx,self.Ny))
+
+        print(f"Shape of the data array: {np.shape(self.O1A)}")
 
 class advanced_scan:
     def __init__(self):
